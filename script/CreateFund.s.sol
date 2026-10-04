@@ -10,15 +10,19 @@ import {Teller} from "../src/core/Teller.sol";
 import {FundFees} from "../src/core/Fees.sol";
 import {DialPresets} from "../src/core/DialPresets.sol";
 import {Dial} from "../src/interfaces/IFundController.sol";
+import {ITeller} from "../src/interfaces/ITeller.sol";
 import {AggregatorSwapAdapter} from "../src/adapters/swap/AggregatorSwapAdapter.sol";
 import {IFablesPoolRegistry} from "../src/interfaces/external/fables/IFablesPoolRegistry.sol";
 
 /**
  * @title  CreateFund
- * @notice Creates one Fund through the public teller and readies it for its manager: the teller's `createFund`
- *         makes the vault and controller and opens the Fund with the owner's stake in one transaction, then the
- *         chosen adapters are enabled and the manager named. The broadcaster is the Fund's owner and pays the
- *         stake, so it must hold the USDG. The Fund takes public deposits from its first cut-off on.
+ * @notice Creates one Fund through the public teller and readies it for its manager. With a teller that has
+ *         `createFundWith` (the deployment record says `oneTxCreate`, as deployments/4663-teller-v2.json does) the
+ *         vault, the controller, the opening deposit, every chosen adapter, the manager and the fee recipient go
+ *         in one transaction after the USDG approval. Otherwise the teller's `createFund` makes the vault and
+ *         controller and opens the Fund, then the chosen adapters are enabled and the manager named one call at a
+ *         time. The broadcaster is the Fund's owner and pays the opening deposit, so it must hold the USDG. The
+ *         Fund takes public deposits from its first cut-off on.
  *
  * @dev    Environment:
  *         - FUND_NAME, FUND_SYMBOL: the share token's name and symbol (required);
@@ -27,7 +31,7 @@ import {IFablesPoolRegistry} from "../src/interfaces/external/fables/IFablesPool
  *           other than the owner holds a share the owner may change them at once; after that a raise waits 30
  *           days;
  *         - FUND_DIAL: `open` (default: no caps, at most 25% lost a day), `balanced` or `conservative` (src/core/DialPresets.sol);
- *         - FUND_STAKE_USDG: the opening stake, raw USDG (6 decimals); default the teller's minimum (10 USDG);
+ *         - FUND_STAKE_USDG: the opening deposit, raw USDG (6 decimals); default the teller's minimum (10 USDG);
  *         - FUND_ADAPTERS: comma-separated labels from the deployment record, default one of every kind (a Fund may list 12)
  *           (swap,erc4626,index,morpho,uniswapV3,uniswapV4,fables);
  *         - FUND_MANAGER_DAYS: the manager's term (default `fund.managerDays`, 90);
@@ -82,18 +86,38 @@ contract CreateFund is Script {
         Teller teller = Teller(vm.parseJsonAddress(dep, ".teller"));
         stake = vm.envOr("FUND_STAKE_USDG", teller.minOpeningStake());
 
+        bool oneTx = vm.keyExistsJson(dep, ".oneTxCreate") && vm.parseJsonBool(dep, ".oneTxCreate");
+        ITeller.FundSetup memory setup;
+        setup.adapters = new address[](labels.length);
+        setup.configs = new bytes[](labels.length);
+        for (uint256 i; i < labels.length; ++i) {
+            (setup.adapters[i], setup.configs[i]) = _config(labels[i]);
+            names.push(labels[i]);
+        }
+
         vm.startBroadcast();
         (, owner,) = vm.readCallers();
         require(vm.envOr("FUND_OWNER", owner) == owner, "the broadcaster is not FUND_OWNER");
         require(IERC20(usdg).balanceOf(owner) >= stake, "the owner does not hold the stake USDG");
+        recipient = vm.envOr("FUND_FEE_RECIPIENT", owner);
+        uint64 until = uint64(block.timestamp + days_ * 1 days);
         IERC20(usdg).approve(address(teller), stake);
         address c;
-        (vault, c) = teller.createFund(vm.envString("FUND_NAME"), symbol, dial, stake, mgmt, perf);
-        controller = FundController(c);
-        for (uint256 i; i < labels.length; ++i) _enable(labels[i]);
-        controller.setManager(manager, uint64(block.timestamp + days_ * 1 days));
-        recipient = vm.envOr("FUND_FEE_RECIPIENT", owner);
-        if (recipient != owner) teller.fees().setRecipient(vault, recipient);
+        if (oneTx) {
+            (setup.manager, setup.managerExpiresAt, setup.feeRecipient) = (manager, until, recipient);
+            (vault, c) = teller.createFundWith(vm.envString("FUND_NAME"), symbol, dial, stake, mgmt, perf, setup);
+            controller = FundController(c);
+            address[] memory listed = controller.adapters();
+            for (uint256 i; i < listed.length; ++i) instances.push(listed[i]);
+        } else {
+            (vault, c) = teller.createFund(vm.envString("FUND_NAME"), symbol, dial, stake, mgmt, perf);
+            controller = FundController(c);
+            for (uint256 i; i < labels.length; ++i) {
+                instances.push(controller.addAdapter(setup.adapters[i], setup.configs[i]));
+            }
+            controller.setManager(manager, until);
+            if (recipient != owner) teller.fees().setRecipient(vault, recipient);
+        }
         vm.stopBroadcast();
 
         _record();
@@ -107,9 +131,8 @@ contract CreateFund is Script {
         revert("FUND_DIAL must be open, balanced or conservative");
     }
 
-    function _enable(string memory label) internal {
+    function _config(string memory label) internal view returns (address impl, bytes memory config) {
         bytes32 h = keccak256(bytes(label));
-        bytes memory config;
         if (h == keccak256("swap")) {
             SwapTarget[] memory st = abi.decode(vm.parseJson(json, ".fund.swapTargets"), (SwapTarget[]));
             AggregatorSwapAdapter.Target[] memory targets = new AggregatorSwapAdapter.Target[](st.length);
@@ -132,9 +155,7 @@ contract CreateFund is Script {
         } else if (h != keccak256("uniswapV3") && h != keccak256("uniswapV4")) {
             revert(string.concat("unknown adapter label: ", label));
         }
-        address impl = vm.parseJsonAddress(dep, string.concat(".adapters.", label));
-        names.push(label);
-        instances.push(controller.addAdapter(impl, config));
+        impl = vm.parseJsonAddress(dep, string.concat(".adapters.", label));
     }
 
     /// @dev Every hook of an active, ERC-20-only Fables pool, each with one of its pools as the witness the

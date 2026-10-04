@@ -56,8 +56,6 @@ contract TellerHardeningTest is TellerBase {
     function test_TokenHookCannotActDuringAnExit() public {
         vm.prank(owner);
         controller.setManager(address(hook), uint64(block.timestamp + 30 days));
-        vm.prank(owner);
-        tel.releaseStake(address(vault));
         hook.arm(address(controller), abi.encodeWithSignature("act(address,bytes)", address(book), bytes("")));
         vm.prank(owner);
         tel.redeemInKind(address(vault), 100e18, owner);
@@ -67,8 +65,6 @@ contract TellerHardeningTest is TellerBase {
 
     function test_TokenHookCannotReenterTheTeller() public {
         uint256 a = _deposit(alice, 100e6, 1);
-        vm.prank(owner);
-        tel.releaseStake(address(vault));
         hook.arm(address(tel), abi.encodeWithSignature("claim(uint256)", a));
         vm.prank(owner);
         tel.redeemInKind(address(vault), 100e18, owner);
@@ -126,14 +122,13 @@ contract TellerHardeningTest is TellerBase {
         uint256 bs = _join(bob, 400e6);
         uint256 r = _redeem(bob, bs, 1);
         uint256 a = _deposit(alice, 100e6, 1);
-        uint256 stake = tel.fund(address(vault)).stake;
-        assertEq(tel.owed(address(vault)), stake + bs);
+        assertEq(tel.owed(address(vault)), bs, "the owner's opening shares are in its wallet, not owed here");
         _settle(_batchOf(r));
         _claim(r);
         _claim(a);
-        assertEq(tel.owed(address(vault)), stake, "only the stake is left in custody");
+        assertEq(tel.owed(address(vault)), 0, "nothing is left in custody");
         assertEq(tel.owed(address(usdg)), 0);
-        assertEq(vault.balanceOf(address(tel)), stake + tel.DEAD_SHARES());
+        assertEq(vault.balanceOf(address(tel)), tel.DEAD_SHARES());
     }
 
     function test_WriteOffRefusesATokenTheFundOwesOrAnAdapterHolds() public {
@@ -156,7 +151,8 @@ contract TellerHardeningTest is TellerBase {
         uint256 s0 = vault.totalSupply();
         uint256 a = _deposit(alice, 100e6, 1);
         _settle(_batchOf(a));
-        uint256 feeShares = vault.balanceOf(owner) + vault.balanceOf(aix) + vault.balanceOf(treasury);
+        // The owner is the fee recipient and holds its opening shares (STAKE at one share per USDG) in its wallet.
+        uint256 feeShares = vault.balanceOf(owner) - STAKE * 1e12 + vault.balanceOf(aix) + vault.balanceOf(treasury);
         assertLt(feeShares, s0 * 2 / 100 * 2 / 365, "at most a couple of days, not the owner-only year");
     }
 

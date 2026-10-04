@@ -26,10 +26,10 @@ interface ICustody {
  *         reviewed, lent out today) drains into it (`topUp`), and every account's part grows with it; `claimed`
  *         remembers what each account already took.
  *
- *         Shares in the teller's custody at the snapshot (an opening stake, escrowed cash exits, shares a batch
+ *         Shares in the teller's custody at the snapshot (escrowed cash exits, shares a batch
  *         minted that are not claimed yet) belong to request owners, not to the teller: the teller records each
  *         custody once, when it ends (`Teller.custodyAt`: owner, shares, the snapshots it spanned), and a claim asks
- *         it for the account's part at that one snapshot. So no claim, cancel or stake release in the teller ever
+ *         it for the account's part at that one snapshot. So no claim or cancel in the teller ever
  *         walks the snapshots taken meanwhile, however many there are. What the teller never records (its dead
  *         shares) stays here. Shares the Fund's fee contract holds as the manager's locked
  *         first-loss stake are an ordinary account: their part can be claimed to that contract, which cannot pass

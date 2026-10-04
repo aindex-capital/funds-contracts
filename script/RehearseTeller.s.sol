@@ -267,14 +267,13 @@ contract RehearseTeller is Script {
     }
 
     /// @notice Anyone sets `token` aside for the holders of this moment, then the pocket pays the listed holders
-    ///         and the owner (its opening stake's part, handed over from the teller's custody).
+    ///         and the owner (its opening shares sit in its wallet, so the snapshot counts them).
     function pocket(uint256 pk, address token, address[] calldata holders) external {
         _load();
         (uint256 nav0, uint256 s0, uint256 f0) = _state();
         uint256 held = IERC20(token).balanceOf(vault);
         vm.startBroadcast(pk);
         uint256 id = tel.pocket(vault, token, new address[](0), 0);
-        tel.assignStakePockets(vault);
         IPockets p = tel.pockets();
         uint256 total;
         for (uint256 i; i < holders.length; ++i) total += p.claim(vault, id, holders[i]);

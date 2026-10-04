@@ -213,34 +213,35 @@ contract PocketsTest is TellerBase {
 
     // ------------------------------------------------------------ the teller's custody
 
-    function test_StakePartAssignedToTheOwner() public {
+    /// The owner's opening shares sit in its wallet: the snapshot counts them like anyone's, with no custody record
+    /// and nothing to assign. Leaving after the snapshot keeps the part.
+    function test_OwnerWalletSharesCountInPockets() public {
         _join(alice, 1000e6);
         _hold(tokN, 200e18);
+        uint256 stake = vault.balanceOf(owner);
+        assertEq(stake, STAKE * 1e12, "the opening shares are in the owner's wallet");
         uint256 id = _pocket(_none(), 0);
-        uint256 stake = tel.fund(address(vault)).stake;
-        assertEq(pockets.due(address(vault), id, owner), 0);
-        tel.assignStakePockets(address(vault));
         (, uint256 amt, uint256 supplyAt) = pockets.pocket(address(vault), id);
-        assertEq(pockets.due(address(vault), id, owner), amt * stake / supplyAt);
-        tel.assignStakePockets(address(vault)); // nothing twice
-        assertEq(tel.custodyAt(address(vault), id, owner), stake);
-        // Alice leaves; the owner, now the last holder, takes the stake back: no second assignment.
-        vm.startPrank(alice);
-        tel.redeemInKind(address(vault), vault.balanceOf(alice), alice);
-        vm.stopPrank();
+        assertEq(tel.custodyAt(address(vault), id, owner), 0, "no custody");
+        assertEq(pockets.due(address(vault), id, owner), amt * stake / supplyAt, "counted at once");
+        assertEq(pockets.due(address(vault), id, alice), amt * vault.balanceOf(alice) / supplyAt);
+        // The owner sells everything in kind after the snapshot, while alice still holds: its part stays.
         vm.prank(owner);
-        tel.releaseStake(address(vault));
-        assertEq(tel.custodyAt(address(vault), id, owner), stake);
+        tel.redeemInKind(address(vault), stake, owner);
+        assertEq(vault.balanceOf(owner), 0);
         pockets.claim(address(vault), id, owner);
         assertEq(tokN.balanceOf(owner), amt * stake / supplyAt);
     }
 
-    function test_ReleaseStakeAssignsWhatWasNotYet() public {
+    /// Shares the owner buys after a snapshot take no part of that pocket; those it held then do.
+    function test_OwnerTopUpAfterSnapshotTakesNoPart() public {
         _hold(tokN, 200e18);
         uint256 id = _pocket(_none(), 0);
-        vm.prank(owner);
-        tel.releaseStake(address(vault));
-        assertEq(tel.custodyAt(address(vault), id, owner), STAKE * 1e12);
+        uint256 before = vault.balanceOf(owner);
+        _join(owner, 500e6);
+        assertGt(vault.balanceOf(owner), before);
+        assertEq(vault.balanceOfAt(owner, id), before);
+        assertEq(pockets.due(address(vault), id, owner), _part(id, before));
     }
 
     function test_EscrowedCashExitAndUnclaimedDepositShares() public {
@@ -318,9 +319,7 @@ contract PocketsTest is TellerBase {
         _join(alice, 100e6);
         _hold(tokN, 100e18);
         uint256 id = _pocket(_none(), 0);
-        tel.assignStakePockets(address(vault));
-        uint256 tellerAt = vault.balanceOfAt(address(tel), id);
-        assertEq(tellerAt - tel.custodyAt(address(vault), id, owner), tel.DEAD_SHARES(), "only the dead shares stay");
+        assertEq(vault.balanceOfAt(address(tel), id), tel.DEAD_SHARES(), "only the dead shares stay");
         // Every holder claims: the pocket keeps the dead shares' part and rounding, never pays more.
         pockets.claim(address(vault), id, alice);
         pockets.claim(address(vault), id, owner);

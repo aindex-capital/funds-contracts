@@ -26,7 +26,8 @@ src/
     FundVault.sol        shares (ERC-20) and custody; no protocol logic, no generic call
     FundController.sol   the manager's only door: runs adapter actions inside the dial
     FundBook.sol         linked library: reads a Fund's book (holdings, positions, debts) and prices it
-    Teller.sol           the public teller, one for every Fund: opening stake, queued requests, batches (cash in
+    Teller.sol           the public teller, one for every Fund: opening (in one transaction with adapters and
+                         manager: createFundWith), queued requests, batches (cash in
                          at ask NAV, cash out at bid NAV, matched at fair), exits in kind at once or in parts,
                          holders' pockets, dust (docs/DEPOSITS-AND-EXITS.md)
     TellerOps.sol        linked library: exits in kind (start, per-adapter claims, escrow), fee minting, pockets,
@@ -60,6 +61,16 @@ script does this on its own). Deploy order for the teller (`script/DeployFunds.s
 `FundFees(config)`, `Teller(factory, fees, pockets, admin)`, then `fees.wireTeller(teller)` and
 `pockets.wireTeller(teller)` (Pockets serves only that teller, and only for a vault that names it), the weekend inflow cap
 from `script/funds-config.json`'s `teller` and one `setKeeper` per keeper. The teller has no swap routers.
+
+The second teller (2026-10-04, `script/DeployTellerV2.s.sol`, record `deployments/4663-teller-v2.json`) serves new
+Funds; Funds opened on the first keep it (a vault names its teller once). It mints the owner's opening deposit to
+the owner's wallet and creates a Fund ready to trade in one transaction. New with it: a `FundFactory` (its
+`ControllerDeployer` holds the controller's code, which gained the one-time `setup`), `Pockets` and `FundFees`
+(each wired to one teller, once) and the `Teller`. Reused: the registry and every adapter implementation, the price
+router and sources, the Morpho market registry, `FeeConfig` and the four linked libraries (unchanged source; the
+wrapper links the deployed ones after checking their code on chain). Seven transactions: four deployments,
+`fees.wireTeller`, `pockets.wireTeller` and `setKeeper` (plus `transferAdmin` when the admin is not the deployer);
+about 21.8M gas. Settings are copied from the first teller on chain.
 
 ## How an action runs
 
@@ -191,9 +202,15 @@ liquidity is valued at oracle prices and a deposit into a moved pool shows as a 
 
 The shortcut: while **nobody but the owner has ever held a share** (the vault latches the first share that
 reaches anyone else) and the owner holds them all, changes apply at once. Shares handed back to the owner
-do not reopen it. Shares in the teller's custody (the owner's opening stake, a batch's shares before they are
-claimed) do not latch and count as the owner's for this check; the teller latches the vault itself as soon as
-someone other than the owner queues a deposit, so queued depositors count before they hold shares.
+do not reopen it. The owner's own shares never latch, in its wallet (its opening deposit on the second teller,
+top-ups, fee shares when it is the recipient) or in the teller's escrow. Shares in the teller's custody (a batch's
+shares before they are claimed; the first teller's opening stakes) do not latch and count as the owner's for this
+check; the teller latches the vault itself as soon as someone other than the owner queues a deposit, so queued
+depositors count before they hold shares.
+
+`setup` (teller only, once, before the first share) is how `Teller.createFundWith` applies the creating owner's
+adapters and manager in the creation's own transaction: the same registry clone, `_enable` and `ManagerSet` as
+`addAdapter` and `setManager` while only the owner holds, then closed for good (`setupDone`).
 
 ## Limits
 
@@ -332,7 +349,9 @@ owner who wants none of that keeps `allowUnreviewed` off.
 | Fee config admin (AINDEX) | the fee split and the $AIX and treasury recipients, from the next accrual | change a Fund's rates or exceed the maxima |
 
 The owner also sets the Fund's fee rates (`FundFees.setTerms`: a raise waits 30 days), its manager fee recipient,
-its batch schedule, and may wind the Fund down (deposits stop; its opening stake may leave 7 days later).
+its batch schedule, and may wind the Fund down: closed for good at once, deposits stop and waiting ones are paid
+back; exits go on. On the second teller the owner's opening deposit is ordinary shares it may sell at any time; on
+the first, its stake may leave 7 days after a wind-down, or when it is the last holder.
 
 Role recovery: owner, reviewer and router owner transfer in two steps. The guardian of a Fund can hand on
 its role at once; the owner can replace a lost or rogue guardian after the 7-day notice (holders see it
@@ -370,7 +389,15 @@ the MCP should list a Fund as investable only when its teller is an AINDEX telle
   adapter; vault approvals are zero between calls; a day's losses never exceed the budget; caps hold after
   every successful action.
 - `test/adapters/AdapterSuite.sol`: what every adapter must pass, including `testSuite_SplitSumsToWhole`.
-- `test/unit/Teller*.t.sol`: opening and the stake, requests and batches, cash in at ask NAV, cash out at bid NAV
+- `test/unit/TellerOwnerShares.t.sol`: the owner's opening shares in its wallet: sold in part or in full, in cash
+  and in kind, while others hold or not; top-ups; no latch from the owner's own shares; the management clock from
+  the latch; wind-down without notice; reopening (`AlreadyOpen`, `NotEmpty`); first-depositor and donation attacks
+  on a new Fund.
+- `test/unit/CreateFundWith.t.sol`: a Fund created ready in one transaction (adapters, manager, fee recipient, the
+  same events), the same checks as the owner's calls (unknown or retired implementation, 13 adapters, a long term),
+  and a setup nobody else can run (not the owner, the manager or a stranger; not twice; not after the first share;
+  not on a Fund someone else made for the owner).
+- `test/unit/Teller*.t.sol`: opening, requests and batches, cash in at ask NAV, cash out at bid NAV
   (in full, or short with shares handed back), matching at fair, limits (as prices, the fast paths, skips moved once
   then paid back), `maxLive`, receivers (the receiver owns the request, the payer cannot cancel it, places per
   payer and receiver pair, referrer events, pockets custody for the receiver; `TellerReceiver.t.sol`), the 10 USDG
@@ -411,8 +438,11 @@ wallet, and the treasury `FUNDS_TREASURY`, default the AINDEX Safe; `FundFees`; 
 stake and the five swap routers allowed), and proposes the price configuration in `script/funds-config.json`.
 The router and sources delay any raise by a day, a first configuration included, so `script/apply-pending.sh`
 (`ApplyPending.s.sol`, anyone may run it) applies it 24 hours later. Then `script/create-fund.sh`
-(`CreateFund.s.sol`) creates a Fund through the teller's `createFund`: owner (the key), name, symbol, dial preset
-(open by default), fee rates, opening stake, adapters and manager; the strategy lives off chain.
+(`CreateFund.s.sol`) creates a Fund through the teller: owner (the key), name, symbol, dial preset (open by
+default), fee rates, opening deposit, adapters and manager; the strategy lives off chain. With a record that says
+`oneTxCreate` (the second teller's) it is one `createFundWith` after the approval, otherwise `createFund` then one
+call per adapter and the manager. `script/deploy-teller-v2.sh` (DRY_RUN=1, preflight, keystore) deploys the second
+teller next to the first.
 `script/create-first-funds.sh` runs it for each of AINDEX's first Funds in `script/first-funds.json`.
 
 `script/rehearse-funds.sh` runs all of it on an anvil fork, then the manager's trades through every adapter kind
@@ -422,9 +452,9 @@ exits in full and short, exits in kind at once and in parts, a weekend settlemen
 fees after 30 days, the manager investing new cash), checking fairness at each settlement. Steps are in
 the README.
 
-Contract sizes (`forge build --sizes`, 2026-10-02): the Teller (45.7 KB, initcode 47.1 KB,
+Contract sizes (`forge build --sizes`, 2026-10-04): the Teller (46.4 KB, initcode 47.7 KB,
 under the 49.2 KB initcode cap), the Fables adapter (34.0 KB), the Uniswap v4 adapter (28.6 KB), the Morpho adapter
-(27.4 KB), the controller (25.0 KB), the Uniswap v3 adapter (24.6 KB) and the factory's initcode (37.4 KB) are above
+(27.4 KB), the controller (26.2 KB), the Uniswap v3 adapter (24.6 KB) and the factory's initcode (38.7 KB) are above
 Ethereum's 24 KB limit; TellerOps (20.0 KB), the PriceRouter (18.7 KB), TellerMath (16.7 KB), FundBook (11.5 KB),
 TellerQueue (5.7 KB) and Pockets (5.1 KB) are under it. Robinhood Chain accepts far larger code (checked 2026-10-01 with
 `eth_estimateGas`: a 60,000-byte contract deploys, a 100,000-byte one does not), so the 24 KB limit is not a hard
@@ -438,4 +468,6 @@ constraint there; the scripts simulate with `--disable-code-size-limit` and the 
   and v4, Fables), fork-tested on Robinhood Chain; deploy, apply and create-Fund scripts rehearsed on a fork.
 - Public teller (`Teller` and its libraries), holders' pockets (`Pockets`) and fees (`FeeConfig`, `FundFees`):
   rebuilt for cash in at NAV on 2026-10-02, tested with mocks, in the deploy scripts, and rehearsed on a fork with
-  every adapter. Not yet on mainnet.
+  every adapter. Live on Robinhood Chain (`deployments/4663.json`).
+- Second teller (owner's opening deposit in its wallet, one-transaction creation): tested, dry-run against the
+  chain and rehearsed on a fork on 2026-10-04; not yet deployed.

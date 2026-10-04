@@ -48,22 +48,47 @@ every settlement that it still holds what it owes in USDG and in the Fund's shar
 
 ## Opening a Fund
 
+Two tellers serve AINDEX Funds on Robinhood Chain. The first (`deployments/4663.json`) keeps the Funds opened on it,
+whose owners' opening stakes stay in its custody under its own rules (`releaseStake` when the owner is the last
+holder or 7 days after `windDown`; `assignStakePockets`). New Funds open on the second (`deployments/4663-teller-v2.json`,
+owner decision 2026-10-04), described here: the owner's opening deposit is ordinary shares in its wallet.
+
 `createFund(name, symbol, dial, stakeUsdg, managementBps, performanceBps)` creates the Fund through the factory
 (the caller is its owner) and opens it in one transaction; `open(vault, ...)` opens a Fund made separately.
+`createFundWith(name, symbol, dial, stakeUsdg, managementBps, performanceBps, setup)` does the same and readies the
+Fund for its manager in that one transaction (one wallet prompt after the USDG approval): `setup` lists the adapters
+to enable (implementations and configs), the manager and its term's end, and the fee recipient (zero: the owner).
+The controller applies them through `FundController.setup` with exactly the checks and events of `addAdapter` and
+`setManager` while only the owner holds (a fresh clone from the registry, which refuses an unknown or retired
+implementation; at most 12 adapters; a term of at most 366 days). Only the Fund's teller may call `setup`, once,
+before the Fund's first share exists, and the teller calls it only for the Fund `createFundWith` has just created
+for its caller, so no one can run a setup on anyone else's Fund or reach it later. The plain flow still works:
+`createFund`, then the owner's own `addAdapter`, `setManager` and `FundFees.setRecipient`.
 
-- The owner deposits at least `minOpeningStake` USDG (10 USDG at deployment), at one share per USDG (scaled to 18
-  decimals). That is the only time a share count is set by a fixed price, and it is the owner's own money in an
-  empty Fund.
+- The owner deposits at least `minOpeningStake` USDG (10 USDG at deployment; it pays for the opening and keeps dust
+  Funds out), at one share per USDG (scaled to 18 decimals). That is the only time a share count is set by a fixed
+  price, and it is the owner's own money in an empty Fund.
 - On a Fund's first opening the teller also mints `DEAD_SHARES` (1e12, about a millionth of a USDG) to itself:
-  never owed, never redeemed, a floor under the supply. Without it an owner who is the last holder could shrink the
-  supply to a few wei and then donate to the vault, so that rounding a new depositor's mint down took a large part
-  of its deposit. With it, a mint rounds away less than one raw share, whatever anyone donates.
-- The stake's shares stay in the teller's custody. The owner takes them back (`releaseStake`) when it is the last
-  holder, or `WIND_DOWN_NOTICE` (7 days) after `windDown`, which stops deposits at once.
-- Shares in the teller's custody do not count as outside holders, so an owner-only Fund keeps its instant dial
-  changes. The teller sets the vault's outside-holder latch as soon as a deposit is queued for a receiver other
-  than the owner (whoever pays it), and undoes it if every such deposit is cancelled before any share reaches an
-  outsider.
+  never owed, never redeemed, a floor under the supply. Without it an owner (or anyone) who is the last holder
+  could shrink the supply to a few wei and then donate to the vault, so that rounding a new depositor's mint down
+  took a large part of its deposit. With it, a mint rounds away less than one raw share, whatever anyone donates,
+  and a donation stays with the holders of the moment, mostly the dead shares once the owner has left
+  (`test/unit/TellerOwnerShares.t.sol`: the owner keeps one wei and donates a million USDG, the next depositor gets
+  its 1,000 USDG back less rounding; the owner leaves in full and a stranger donates; a front-run donation on a new
+  Fund).
+- The opening shares are minted to the owner's wallet: ordinary shares. The owner may keep them, top up
+  (`requestDeposit`), or sell part or all of them at any time through the same cash and in-kind exits as anyone,
+  whether or not anyone else holds. Nothing is held back for it: holders are protected by the dial, the notices on
+  every change that adds risk, the loss budget and their own exit in kind, not by the owner's money staying in.
+- The owner's own shares never set the vault's outside-holder latch (`FundVault._update` latches only on a share
+  reaching someone other than the owner or the teller), wherever they move between the owner's wallet and the
+  teller's escrow, so an owner-only Fund keeps its instant dial, adapter and fee changes and is charged no fee. The
+  teller sets the latch as soon as a deposit is queued for a receiver other than the owner (whoever pays it), and
+  undoes it if every such deposit is cancelled before any share reaches an outsider. A share the owner sends to
+  anyone else latches for good.
+- `windDown` closes the Fund for good, at once: no deposit request is taken from then on, the owner's included, and
+  every deposit still waiting is paid back at its next settlement. Exits go on as before. It needs no notice (it
+  only stops money coming in) and no longer frees anything: there is no stake to wait for.
 - A Fund every holder has left can be opened again by its owner while what is left in it is worth less than
   `dustUsd`.
 
@@ -313,9 +338,11 @@ holding is set aside for the holders of that moment:
   and no exit in kind has begun since (`lastInKindAt`: a leaver in kind already took its slice of what was still in
   the adapters, and its snapshot balance must not take a part of it again), so a token many adapters hold can be
   pocketed over several transactions. After such an exit the rest is pocketed afresh (`into` 0).
-- **Shares in the teller's custody at a snapshot** (an opening stake, an escrowed cash exit, shares a round minted
-  that are not claimed yet, shares handed back) belong to request owners: when the shares leave custody (`claim`,
-  `cancel`, `releaseStake`, or `assignStakePockets` at any time for a stake) the teller records the custody once
+- **The owner's opening shares** sit in its wallet, so the snapshot counts them like anyone's: no custody record,
+  nothing to assign, and shares it sells after a snapshot keep their part of that pocket.
+- **Shares in the teller's custody at a snapshot** (an escrowed cash exit, shares a round minted that are not
+  claimed yet, shares handed back) belong to request owners: when the shares leave custody (`claim` or `cancel`)
+  the teller records the custody once
   (owner, shares, the snapshots it spanned), and a pocket claim asks it for the account's part at that one snapshot
   (`Teller.custodyAt`). One write however many snapshots were taken: walking every snapshot
   instead, 600 of them would make a claim cost 85M gas, freezing a leaver's cash. The dead shares' part
@@ -459,7 +486,8 @@ waiting and `cutoff`), `round(vault, batch, round)`, `batchRequests`, `request(i
 
 Events: `Opened`, `DepositRequested` and `RedeemRequested` (their `owner` is the receiver), `Referred`, `Cancelled`, `Moved`, `Skipped`, `Matched`, `Minted`,
 `Paid`, `DepositsWait`, `Settled`, `Claimed`, `RedeemedInKind`, `SlicePaid`, `SliceFunded`, `Left`, `ExitStarted`,
-`ExitClaimed`, `Pocketed`, `WrittenOff`, `ScheduleSet`, `WindDown`, `StakeReleased`, `FeesAccrued`; `Pockets`:
+`ExitClaimed`, `Pocketed`, `WrittenOff`, `ScheduleSet`, `WindDown` (its second field is when the Fund closed),
+`FeesAccrued`; `Pockets`:
 `PocketOpened`, `Credited`, `Assigned`, `Claimed`; controller: `TellerCalled`, `ExitUnits`; vault: `Snapshot`.
 
 A keeper, per Fund with a closed batch: read `depositHold(vault)`; if it says `NoMarket`, call `pocket(vault, token,
@@ -529,6 +557,13 @@ Every settlement path is at or under 12M (the heaviest, a Saturday with the week
 an exit in kind at or under 18.6M (`startInKind` with twelve full Uniswap v3 adapters, 18.53M; it reads every
 adapter's positions once more than before 2026-10-02, to give no slice of an empty one). In one transaction an exit in kind at the caps needs 36M to 49M, above Robinhood
 Chain's 32M: that is why it runs in parts. A Fund up to about a third of the caps leaves in one transaction.
+
+Measured again on 2026-10-04 for the second teller (the owner's opening shares in its wallet, `createFundWith`): the
+settlement and exit paths are unchanged to within a few thousand gas (default mix: 9.97M, 10.09M, 9.96M, 10.77M,
+10.10M, 11.09M, 10.79M, 9.50M, `startInKind` 14.49M; twelve Uniswap v4 adapters on a Saturday 11.94M; `startInKind`
+with twelve Uniswap v3 adapters 18.53M). Creating a Fund in one transaction with `createFundWith`, seven adapters
+(one of every kind) and a manager, used 9.84M on an anvil fork of Robinhood Chain; twelve adapters stay well under
+32M (a clone and its configuration cost about 1.2M each).
 
 ### What each item costs
 

@@ -34,7 +34,7 @@ interface IClosureCalendar {
 /**
  * @title  Teller
  * @notice The public desk of every AINDEX Fund: deposits in USDG, exits to USDG at a settlement or in kind at any
- *         time, the owner's opening stake, fees, holders' pockets and dust. One contract serves every Fund, keyed by
+ *         time, the owner's opening deposit, fees, holders' pockets and dust. One contract serves every Fund, keyed by
  *         vault.
  *
  * @dev    ## Cash in at NAV (owner decision 2026-10-02)
@@ -90,8 +90,9 @@ interface IClosureCalendar {
  *         NAV counts a token with no market (class None) and a claim an adapter cannot value as nothing, yet an
  *         exit in kind hands their slice over. `pocket` snapshots the shares (`FundVault.snapshot`) and moves such
  *         a holding to the `Pockets` contract, where the holders of that moment claim it in kind, forever. Shares in
- *         the teller's custody at a snapshot (an opening stake, an escrowed cash exit, shares a batch minted and not
- *         yet claimed) pass their part to the request's owner (`Pockets.assign`) when they leave custody.
+ *         the teller's custody at a snapshot (an escrowed cash exit, shares a batch minted and not yet claimed) pass
+ *         their part to the request's owner (`custodyAt`) when they leave custody. The owner's opening shares sit in
+ *         its own wallet, so the vault's snapshot counts them like anyone's.
  *
  *         ## Keepers
  *         Settling is open to the keepers the admin lists (`setKeeper`), or to anyone once the admin opens it
@@ -132,12 +133,14 @@ interface IClosureCalendar {
  *         can land between an action's two NAV readings, and the controller refuses the manager while the teller
  *         is inside one of its calls (`busy`).
  *
- *         ## Opening stake
- *         A Fund opens with its owner's deposit of at least `minOpeningStake` USDG, at one share per USDG. On its
+ *         ## Opening deposit (owner decision 2026-10-04)
+ *         A Fund opens with its owner's deposit of at least `minOpeningStake` USDG, at one share per USDG, minted to
+ *         the owner's wallet: ordinary shares, which the owner may keep, top up (`requestDeposit`) or sell in part or
+ *         in full at any time through the same cash and in-kind exits as anyone, outside holders or not. On its
  *         first opening the teller also mints `DEAD_SHARES` to itself, never owed and never redeemed, so the supply
- *         can never be pushed down to a few wei, where rounding a mint would be a large part of the Fund. The
- *         stake's shares stay in the teller's custody; the owner gets them back when it is the last holder, or
- *         `WIND_DOWN_NOTICE` after it winds the Fund down.
+ *         can never be pushed down to a few wei, where rounding a mint would be a large part of the Fund (the
+ *         first-depositor and donation attacks). The minimum pays for the opening and keeps dust Funds out. The
+ *         owner's own shares never set the vault's outside-holder latch (`FundVault._update`).
  */
 contract Teller is ITeller, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
@@ -158,7 +161,6 @@ contract Teller is ITeller, ReentrancyGuardTransient {
     /// @notice No new deposit requests while the Fund's manager is paused.
     error DepositsPaused();
     error EscrowTouched(address token);
-    error StakeLocked();
     error BadParams();
     error NotKeeper();
     error NotEmpty();
@@ -220,7 +222,6 @@ contract Teller is ITeller, ReentrancyGuardTransient {
     uint64 public constant DEFAULT_OFFSET = 21 hours; // 21:00 UTC
     uint64 public constant MIN_INTERVAL = 1 hours;
     uint64 public constant MAX_INTERVAL = 7 days;
-    uint64 public constant WIND_DOWN_NOTICE = 7 days;
 
     uint8 private constant HOLD_CLOSED = uint8(Hold.MarketClosed);
     uint8 private constant HOLD_NO_MARKET = uint8(Hold.NoMarket);
@@ -278,8 +279,6 @@ contract Teller is ITeller, ReentrancyGuardTransient {
         uint64 offset;
         uint64 openBatch;
         uint64 windDownAt;
-        uint32 stakeSnap; // snapshot id up to which the stake's pocket parts were handed to the owner
-        uint256 stake; // the owner's opening shares, held here
         uint256 lastNav; // fair NAV (USD, 1e18) after the last settlement
         uint256 lastCash; // the vault's USDG after the last settlement
         uint64 lastAt;
@@ -348,8 +347,8 @@ contract Teller is ITeller, ReentrancyGuardTransient {
     mapping(address => mapping(address => mapping(address => uint256[MAX_LIVE]))) private _live;
     uint256 public nextId = 1;
 
-    /// @notice Everything the teller owes, per token: queued USDG, unclaimed exits, escrowed and unclaimed shares,
-    ///         opening stakes. Its balance never falls below this.
+    /// @notice Everything the teller owes, per token: queued USDG, unclaimed exits, escrowed and unclaimed shares.
+    ///         Its balance never falls below this.
     mapping(address => uint256) public owed;
 
     constructor(IFundFactoryLike factory_, FundFees fees_, IPockets pockets_, address admin_) {
@@ -448,8 +447,8 @@ contract Teller is ITeller, ReentrancyGuardTransient {
     // ================================================================ opening and the owner
 
     /**
-     * @notice Create a Fund served by this teller and open it with the caller's stake, in one transaction.
-     *         The caller becomes its owner. Fee rates may be set later through `FundFees` (instant until the
+     * @notice Create a Fund served by this teller and open it with the caller's opening deposit (shares to the
+     *         caller's wallet), in one transaction. The caller becomes its owner. Fee rates may be set later through `FundFees` (instant until the
      *         first outside holder).
      */
     function createFund(
@@ -461,19 +460,41 @@ contract Teller is ITeller, ReentrancyGuardTransient {
         uint16 performanceBps
     ) external nonReentrant returns (address vault, address controller) {
         (vault, controller) = factory.create(name, symbol, msg.sender, address(this), dial);
-        _open(vault, stakeUsdg, managementBps, performanceBps);
+        _open(vault, stakeUsdg, managementBps, performanceBps, msg.sender);
+    }
+
+    /**
+     * @notice `createFund` with the Fund ready to trade, in the same one transaction (after the USDG approval): the
+     *         caller's initial adapters and manager (`FundController.setup`: the same checks and events as
+     *         `addAdapter` and `setManager` while only the owner holds) and fee recipient (zero: the caller). Only
+     *         ever applied to the Fund this call creates for the caller, before its first share exists, so nobody
+     *         else's setup can reach it and it cannot be used again.
+     */
+    function createFundWith(
+        string calldata name,
+        string calldata symbol,
+        Dial calldata dial,
+        uint256 stakeUsdg,
+        uint16 managementBps,
+        uint16 performanceBps,
+        FundSetup calldata setup
+    ) external nonReentrant returns (address vault, address controller) {
+        (vault, controller) = factory.create(name, symbol, msg.sender, address(this), dial);
+        IFundController(controller).setup(setup.adapters, setup.configs, setup.manager, setup.managerExpiresAt);
+        address to = setup.feeRecipient == address(0) ? msg.sender : setup.feeRecipient;
+        _open(vault, stakeUsdg, managementBps, performanceBps, to);
     }
 
     /**
      * @notice Open a Fund made by the factory with this teller: the owner deposits at least `minOpeningStake` USDG
-     *         at one share per USDG, held here as its stake. Also reopens a Fund every holder has left.
+     *         at one share per USDG, minted to its wallet. Also reopens a Fund every holder has left.
      */
     function open(address vault, uint256 stakeUsdg, uint16 managementBps, uint16 performanceBps)
         external
         nonReentrant
         returns (uint256 shares)
     {
-        return _open(vault, stakeUsdg, managementBps, performanceBps);
+        return _open(vault, stakeUsdg, managementBps, performanceBps, msg.sender);
     }
 
     /// @notice Owner: the batch rhythm (a cut-off every `interval` seconds, `offset` after midnight UTC). Applies
@@ -487,36 +508,15 @@ contract Teller is ITeller, ReentrancyGuardTransient {
         emit ScheduleSet(vault, interval, offset);
     }
 
-    /// @notice Owner: stop taking deposits for good; the opening stake may leave `WIND_DOWN_NOTICE` later.
+    /// @notice Owner: close the Fund for good. From now on it takes no deposit (`WindingDown`), and every deposit
+    ///         still waiting is paid back at its next settlement. Exits, cash and in kind, go on as before, for the
+    ///         owner as for everyone. Takes effect at once: it only stops money coming in, so nobody needs notice.
     function windDown(address vault) external nonReentrant {
         _onlyOwner(vault);
         FundState storage st = _funds[vault];
         if (!st.opened) revert NotOpen();
         if (st.windDownAt == 0) st.windDownAt = uint64(block.timestamp);
-        emit WindDown(vault, st.windDownAt + WIND_DOWN_NOTICE);
-    }
-
-    /// @notice Owner: take the opening stake back (as shares, to redeem in kind) when no one else holds a share
-    ///         (none in a wallet, none queued here), or once a wind-down's notice has passed.
-    function releaseStake(address vault) external nonReentrant {
-        _onlyOwner(vault);
-        FundState storage st = _funds[vault];
-        uint256 stake = st.stake;
-        if (stake == 0) revert BadAmount();
-        bool last = IERC20(vault).totalSupply() == stake + DEAD_SHARES + IERC20(vault).balanceOf(msg.sender);
-        bool wound = st.windDownAt != 0 && block.timestamp >= st.windDownAt + WIND_DOWN_NOTICE;
-        if (!last && !wound) revert StakeLocked();
-        _assignStake(vault, st);
-        st.stake = 0;
-        owed[vault] -= stake;
-        IERC20(vault).safeTransfer(msg.sender, stake);
-        emit StakeReleased(vault, msg.sender, stake);
-    }
-
-    /// @notice Anyone: hand the owner the opening stake's part of every pocket taken while the stake was in custody,
-    ///         so the owner can claim it without releasing the stake.
-    function assignStakePockets(address vault) external nonReentrant {
-        _assignStake(vault, _funds[vault]);
+        emit WindDown(vault, st.windDownAt);
     }
 
     // ================================================================ requests
@@ -1373,7 +1373,7 @@ contract Teller is ITeller, ReentrancyGuardTransient {
 
     // ================================================================ internals: opening, requests
 
-    function _open(address vault, uint256 stakeUsdg, uint16 managementBps, uint16 performanceBps)
+    function _open(address vault, uint256 stakeUsdg, uint16 managementBps, uint16 performanceBps, address recipient)
         private
         returns (uint256 shares)
     {
@@ -1387,25 +1387,25 @@ contract Teller is ITeller, ReentrancyGuardTransient {
         if (stakeUsdg < minOpeningStake) revert StakeTooSmall();
         if (supply != 0) {
             // Reopening a Fund every holder left: what is still in it belongs to the dead shares and would pass
-            // to the new stake, so it must be no more than crumbs.
+            // to the new owner's shares, so it must be no more than crumbs.
             (uint256 rest, bool ok) = TellerMath.navOf(c, Side.Fair);
             if (!ok || rest >= dustUsd) revert NotEmpty();
+            // Reopening sets fee terms at once (`fees.start`), so not over a deposit someone else still has
+            // waiting: it was queued under the old terms and may be past its cut-off, where it cannot be cancelled.
+            if (outsideQueued[vault] != 0) revert NotEmpty();
         }
         IERC20(usdg).safeTransferFrom(msg.sender, vault, stakeUsdg);
         IFundVault(vault).track(usdg);
-        shares = stakeUsdg * _shareScale;
-        IFundVault(vault).mint(address(this), shares);
         if (supply == 0) IFundVault(vault).mint(address(this), DEAD_SHARES); // never owed, never redeemed
-        owed[vault] += shares; // a Fund with no shares has no stake left here (it was released first)
-        st.stake = shares;
-        st.stakeSnap = uint32(_snapNow(vault));
+        shares = stakeUsdg * _shareScale;
+        IFundVault(vault).mint(msg.sender, shares); // the owner's own shares: no latch (`FundVault._update`)
         st.opened = true;
         st.windDownAt = 0;
         if (st.openBatch == 0) {
             st.openBatch = 1;
             _batches[vault][1].cutoff = _cutoffAfter(st, uint64(block.timestamp));
         }
-        fees.start(vault, managementBps, performanceBps, msg.sender);
+        fees.start(vault, managementBps, performanceBps, recipient);
         emit Opened(vault, msg.sender, stakeUsdg, shares);
     }
 
@@ -1501,7 +1501,7 @@ contract Teller is ITeller, ReentrancyGuardTransient {
 
     /// @dev Record that `shares` sat in the teller's custody for `to` over the snapshots after `from` up to `until`:
     ///      `to` counts them in every pocket taken meanwhile (`custodyAt`, read by `Pockets`). One write however
-    ///      many snapshots were taken, so no claim, cancel or stake release depends on their number; a record that
+    ///      many snapshots were taken, so no claim or cancel depends on their number; a record that
     ///      continues the account's last one with the same shares extends it instead.
     function _assign(address vault, address to, uint256 shares, uint256 from, uint256 until) private {
         if (shares == 0 || until <= from) return;
@@ -1517,23 +1517,15 @@ contract Teller is ITeller, ReentrancyGuardTransient {
         list.push(Custody(uint128(shares), uint32(from), uint32(until)));
     }
 
-    /// @notice Shares the teller held in custody for `account` at snapshot `id` of `vault` (an opening stake,
-    ///         escrowed cash exits, minted shares not yet claimed), once that custody has ended: what `Pockets`
-    ///         adds to the account's own snapshot balance.
+    /// @notice Shares the teller held in custody for `account` at snapshot `id` of `vault` (escrowed cash exits,
+    ///         minted shares not yet claimed), once that custody has ended: what `Pockets` adds to the account's own
+    ///         snapshot balance.
     function custodyAt(address vault, uint256 id, address account) external view returns (uint256 shares) {
         Custody[] storage list = _custody[vault][account];
         for (uint256 i; i < list.length; ++i) {
             Custody memory c = list[i];
             if (c.from < id && id <= c.until) shares += c.shares;
         }
-    }
-
-    function _assignStake(address vault, FundState storage st) private {
-        uint256 now_ = _snapNow(vault);
-        if (st.stake != 0 && now_ > st.stakeSnap) {
-            _assign(vault, _controller(vault).owner(), st.stake, st.stakeSnap, now_);
-        }
-        st.stakeSnap = uint32(now_);
     }
 
     // ================================================================ internals: tokens

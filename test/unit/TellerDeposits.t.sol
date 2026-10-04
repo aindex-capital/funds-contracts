@@ -16,13 +16,14 @@ contract TellerOpenTest is TellerBase {
         _setUpTeller();
     }
 
-    function test_OpeningStakeMintsOneSharePerUsdgHeldInCustody() public view {
-        assertEq(vault.totalSupply(), 1000e18 + tel.DEAD_SHARES(), "the stake plus the supply floor");
-        assertEq(vault.balanceOf(address(tel)), 1000e18 + tel.DEAD_SHARES(), "stake and floor held by the teller");
-        assertEq(vault.balanceOf(owner), 0);
+    function test_OpeningDepositMintsOneSharePerUsdgToTheOwnersWallet() public view {
+        assertEq(vault.totalSupply(), 1000e18 + tel.DEAD_SHARES(), "the opening deposit plus the supply floor");
+        assertEq(vault.balanceOf(address(tel)), tel.DEAD_SHARES(), "only the floor is held by the teller");
+        assertEq(vault.balanceOf(owner), 1000e18, "ordinary shares in the owner's wallet");
+        assertEq(tel.owed(address(vault)), 0, "nothing in custody");
         assertEq(usdg.balanceOf(address(vault)), STAKE);
-        assertEq(tel.fund(address(vault)).stake, 1000e18);
-        assertFalse(vault.hadOutsideHolder(), "custody is not an outside holder");
+        assertFalse(vault.hadOutsideHolder(), "the owner's own shares are not an outside holder");
+        assertEq(vault.outsideHolderSince(), 0);
     }
 
     function test_DefaultMinimumIsTenUsdgAndAdminCanRaiseItForNewFunds() public {
@@ -35,7 +36,7 @@ contract TellerOpenTest is TellerBase {
         vm.stopPrank();
         tel.setParams(50e6, 1e6, 1e18, 1e14, 500);
         // A Fund already open is untouched; a new one needs the new minimum.
-        assertEq(tel.fund(address(vault)).stake, 1000e18);
+        assertEq(vault.balanceOf(owner), 1000e18);
         usdg.mint(alice, 41e6);
         vm.startPrank(alice);
         usdg.approve(address(tel), 50e6);
@@ -262,7 +263,7 @@ contract TellerCashEntryTest is TellerBase {
         (uint256 sa,) = _claim(a);
         (uint256 sb,) = _claim(b);
         assertApproxEqAbs(sa, sb * 3, 3);
-        assertEq(vault.balanceOf(address(tel)), tel.fund(address(vault)).stake + tel.DEAD_SHARES(), "all paid out");
+        assertEq(vault.balanceOf(address(tel)), tel.DEAD_SHARES(), "all paid out");
     }
 
     function test_MissingPriceMakesDepositsWaitNotRefunded() public {
@@ -402,10 +403,7 @@ contract TellerCashEntryTest is TellerBase {
     }
 
     function test_DonationCannotMakeAnEntrantLoseMoreThanRounding() public {
-        // The owner leaves all but one wei of the stake, then donates: dead shares keep the supply from vanishing.
-        vm.startPrank(owner);
-        tel.releaseStake(address(vault));
-        vm.stopPrank();
+        // The owner leaves all but one wei of its shares, then donates: dead shares keep the supply from vanishing.
         uint256 st = vault.balanceOf(owner);
         vm.prank(owner);
         tel.redeemInKind(address(vault), st - 1, owner);

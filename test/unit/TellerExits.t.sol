@@ -622,65 +622,6 @@ contract TellerCashExitTest is TellerFundedBase {
     }
 }
 
-contract TellerStakeTest is TellerFundedBase {
-    function setUp() public {
-        _setUpFunded();
-    }
-
-    function test_StakeLockedWhileOthersHold() public {
-        vm.prank(owner);
-        vm.expectRevert(Teller.StakeLocked.selector);
-        tel.releaseStake(address(vault));
-        uint256 sh = vault.balanceOf(alice);
-        vm.prank(alice);
-        tel.redeemInKind(address(vault), sh, alice);
-        // The owner is now the last holder: the stake may leave, in kind.
-        vm.prank(owner);
-        tel.releaseStake(address(vault));
-        vm.prank(owner);
-        tel.redeemInKind(address(vault), 1000e18, owner);
-        assertEq(vault.totalSupply(), tel.DEAD_SHARES(), "only the supply floor is left");
-    }
-
-    function test_WindDownStopsDepositsAndFreesTheStakeAfterNotice() public {
-        uint256 d = _deposit(bob, 100e6, 1);
-        vm.prank(owner);
-        tel.windDown(address(vault));
-        usdg.mint(carol, 10e6);
-        vm.startPrank(carol);
-        usdg.approve(address(tel), 10e6);
-        vm.expectRevert(Teller.WindingDown.selector);
-        tel.requestDeposit(address(vault), 10e6, 1);
-        vm.stopPrank();
-        _settle(_batchOf(d));
-        (uint256 s, uint256 refund) = _claim(d);
-        assertEq(s, 0);
-        assertEq(refund, 100e6, "queued deposits are refunded");
-        vm.prank(owner);
-        vm.expectRevert(Teller.StakeLocked.selector);
-        tel.releaseStake(address(vault));
-        vm.warp(block.timestamp + tel.WIND_DOWN_NOTICE());
-        vm.prank(owner);
-        tel.releaseStake(address(vault));
-        assertEq(vault.balanceOf(owner), 1000e18);
-    }
-
-    function test_AFundEveryoneLeftCanReopen() public {
-        uint256 sh = vault.balanceOf(alice);
-        vm.prank(alice);
-        tel.redeemInKind(address(vault), sh, alice);
-        vm.startPrank(owner);
-        tel.releaseStake(address(vault));
-        tel.redeemInKind(address(vault), 1000e18, owner);
-        usdg.mint(owner, 50e6);
-        usdg.approve(address(tel), 50e6);
-        tel.open(address(vault), 50e6, 0, 0);
-        vm.stopPrank();
-        assertEq(vault.totalSupply(), 50e18 + tel.DEAD_SHARES());
-        assertEq(tel.fund(address(vault)).stake, 50e18);
-    }
-}
-
 contract TellerDustTest is TellerFundedBase {
     MockERC20 internal tokC;
     MockERC20 internal tokD;

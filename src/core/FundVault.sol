@@ -199,8 +199,9 @@ contract FundVault is ERC20, IFundVault {
     }
 
     /// @dev Latch the first time a share reaches anyone but the owner (a transfer, or a mint to someone else).
-    ///      Shares the teller holds in custody (the owner's opening stake, a batch's shares before depositors
-    ///      claim them) do not latch: the teller latches through `latchOutsideHolder` when someone other than the
+    ///      The owner's own shares (its opening deposit, minted to its wallet) never latch. Shares the teller holds
+    ///      in custody (a batch's shares before depositors claim them; the first teller's opening stakes) do not
+    ///      latch either: the teller latches through `latchOutsideHolder` when someone other than the
     ///      owner queues a deposit, which is earlier than any share reaches them.
     function _update(address from, address to, uint256 value) internal override {
         uint256 cur = currentSnapshotId;

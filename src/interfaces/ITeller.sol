@@ -37,6 +37,18 @@ interface ITeller {
         Claimed
     }
 
+    /// @notice What `Teller.createFundWith` applies in the transaction that creates the Fund: the adapters to enable
+    ///         (implementations from the registry, each with its config, as `FundController.addAdapter`), the manager
+    ///         and its term's end (as `FundController.setManager`; a zero manager names none) and who receives the
+    ///         manager's part of the fees (as `FundFees.setRecipient`; zero: the owner).
+    struct FundSetup {
+        address[] adapters;
+        bytes[] configs;
+        address manager;
+        uint64 managerExpiresAt;
+        address feeRecipient;
+    }
+
     struct Request {
         address vault;
         uint64 batch; // a request whose limit fails at settlement moves to the next batch, once
@@ -159,8 +171,8 @@ interface ITeller {
     /// @notice A holding valued at zero went to the holders' pocket `id` (`Pockets`).
     event Pocketed(address indexed vault, uint256 indexed id, address indexed token, uint256 amount);
     event ScheduleSet(address indexed vault, uint64 interval, uint64 offset);
-    event WindDown(address indexed vault, uint64 stakeFreeAt);
-    event StakeReleased(address indexed vault, address indexed owner, uint256 shares);
+    /// @notice The owner closed the Fund for good at `at`: no deposit is taken from then on.
+    event WindDown(address indexed vault, uint64 at);
     event FeesAccrued(address indexed vault, uint256 sharesMinted, uint256 lockedShares, uint256 burnedLocked);
 
     // ---------------------------------------------------------------- opening

@@ -102,6 +102,8 @@ contract FundController is IFundController, ReentrancyGuardTransient {
     error Unreviewed(address adapter);
     error NotTeller();
     error TellerBusy();
+    /// @notice `setup` after the Fund's first share, a second time, or with mismatched lists.
+    error SetupClosed();
     /// @notice A leaver's slice of `adapter` is still to be paid out (an exit in kind in parts): its positions may
     ///         only change by `split` until every pending slice is claimed (`Teller.claimInKind`, anyone).
     error ExitPending(address adapter);
@@ -185,6 +187,8 @@ contract FundController is IFundController, ReentrancyGuardTransient {
     mapping(address => Units) private _units;
     /// @notice Adapters with a leaver's slice still to be paid out; while 0, the book scales nothing.
     uint256 public pendingExits;
+    /// @notice True once the teller ran `setup` (the creation's one-time adapters and manager).
+    bool public setupDone;
 
     // Loss budget, per UTC day.
     uint64 public windowDay;
@@ -463,6 +467,38 @@ contract FundController is IFundController, ReentrancyGuardTransient {
     function noteDebt(address adapter) external nonReentrant {
         _onlyTeller();
         if (isListed[adapter] && !everOwed[adapter]) _noteDebt(adapter);
+    }
+
+    /**
+     * @notice Teller only, once, before the Fund has a single share: the owner's initial adapters and manager,
+     *         applied in the transaction that creates the Fund (`Teller.createFundWith`, which passes only what the
+     *         creating owner itself asked for). Each adapter goes through exactly `addAdapter`'s path while nobody
+     *         but the owner holds a share (a fresh clone from the registry, which refuses an unknown or retired
+     *         implementation; enabled at once; `MAX_ADAPTERS`), and the manager through `setManager`'s
+     *         (`MAX_MANAGER_TERM`; none when `manager_` is zero), with the same events. Closed for good once used,
+     *         and closed anyway from the first share on, so it can never reach a Fund anyone has money in.
+     */
+    function setup(address[] calldata implementations, bytes[] calldata configs, address manager_, uint64 expiresAt)
+        external
+        nonReentrant
+        returns (address[] memory instances)
+    {
+        _onlyTeller();
+        if (setupDone || IERC20(address(_vault)).totalSupply() != 0 || implementations.length != configs.length) {
+            revert SetupClosed();
+        }
+        setupDone = true;
+        instances = new address[](implementations.length);
+        for (uint256 i; i < implementations.length; ++i) {
+            instances[i] = registry.instantiate(implementations[i], address(_vault), configs[i]);
+            _enable(implementations[i], instances[i]);
+        }
+        if (manager_ != address(0)) {
+            if (expiresAt > block.timestamp + MAX_MANAGER_TERM) revert BadTerm();
+            manager = manager_;
+            managerExpiresAt = expiresAt;
+            emit ManagerSet(manager_, expiresAt);
+        }
     }
 
     // ---------------------------------------------------------------- the owner
@@ -895,7 +931,7 @@ contract FundController is IFundController, ReentrancyGuardTransient {
     }
 
     /// @dev Nobody to protect: no one but the owner has ever held a share, and the owner holds them all (in
-    ///      the wallet, or in the teller's custody: the opening stake). The vault's latch means shares handed
+    ///      the wallet, or in the teller's custody: the first teller's opening stake). The vault's latch means shares handed
     ///      back to the owner do not reopen the shortcut. The public teller latches as soon as someone other
     ///      than the owner queues a deposit, so queued depositors count as holders before they hold shares.
     function _noOutsideHolders() private view returns (bool) {

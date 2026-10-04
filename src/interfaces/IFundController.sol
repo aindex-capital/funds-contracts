@@ -73,6 +73,12 @@ interface IFundController {
     /// @notice In the Fund's book: enabled or disabled, not yet removed.
     function isListed(address adapter) external view returns (bool);
 
+    /// @notice Teller only, once, before the Fund's first share: the creating owner's initial adapters (as
+    ///         `addAdapter`, enabled at once) and manager (as `setManager`; none when zero).
+    function setup(address[] calldata implementations, bytes[] calldata configs, address manager_, uint64 expiresAt)
+        external
+        returns (address[] memory instances);
+
     /// @notice Teller only: collect what an enabled adapter has earned (liquidity fees) into the vault, `grow(0)`,
     ///         before an exit in kind reads the Fund.
     function collectFor(address adapter) external;

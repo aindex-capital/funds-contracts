@@ -95,7 +95,8 @@ contract FeeConfig {
  *         (at most `MAX_PERFORMANCE_BPS`, 20%, of the rise in NAV per share above the high-water mark). The maxima
  *         are constants, so no admin and no owner can exceed them. A higher rate waits `INCREASE_NOTICE` (30
  *         days) so holders can leave first; a lower rate applies at once. While nobody but the owner has ever
- *         held a share (the vault's latch), there is nobody to protect, so any change applies at once.
+ *         held a share (the vault's latch) and the owner holds them all (in its wallet or the teller's custody),
+ *         there is nobody to protect, so any change applies at once.
  *
  *         ## Accrual
  *         Only the teller accrues, at every settlement (and the management part at every in-kind exit, which
@@ -246,7 +247,7 @@ contract FundFees {
         _onlyOwner(vault);
         if (management > MAX_MANAGEMENT_BPS || performance > MAX_PERFORMANCE_BPS) revert OverMaximum();
         Terms storage t = _terms[vault];
-        if (!IFundVault(vault).hadOutsideHolder()) {
+        if (!_outsideHolders(vault)) {
             _setNow(vault, t, management, performance);
             return;
         }
@@ -318,7 +319,7 @@ contract FundFees {
         uint256 dt = _elapsed(vault, t.lastAccrual);
         t.lastAccrual = uint64(block.timestamp);
 
-        if (!IFundVault(vault).hadOutsideHolder()) {
+        if (!_outsideHolders(vault)) {
             _release(vault, RELEASE_PER_ACCRUAL);
             if (navOk && supply != 0) highWaterMark[vault] = nav * WAD / supply;
             _applyDue(vault, t);
@@ -452,6 +453,17 @@ contract FundFees {
         t.nextManagement = 0;
         t.nextPerformance = 0;
         emit TermsSet(vault, m, p);
+    }
+
+    /// @dev Someone other than the owner holds or has held a share: the vault's latch, or shares outside the
+    ///      owner's wallet and the teller's custody (the dead shares, batches before claims). The balance check
+    ///      covers an ownership handover, where the former owner's shares never moved and so never latched.
+    ///      The same rule as the controller's `_noOutsideHolders`.
+    function _outsideHolders(address vault) private view returns (bool) {
+        if (IFundVault(vault).hadOutsideHolder()) return true;
+        IERC20 v = IERC20(vault);
+        address owner = IFundController(IFundVault(vault).controller()).owner();
+        return v.totalSupply() != v.balanceOf(owner) + v.balanceOf(IFundVault(vault).teller());
     }
 
     function _onlyOwner(address vault) private view {
