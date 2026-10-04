@@ -1,0 +1,35 @@
+{
+  "about": "AINDEX's own first Funds, created by script/create-first-funds.sh (one script/create-fund.sh run each). Fill in each manager (the agent's session key, or a person) before running; an entry whose manager is the zero address is skipped. The strategy lives off chain (the Fund page, the agent's prompt) and is only copied into the record. Stake is raw USDG (6 decimals); fees in basis points (management a year, at most 200; performance above the high-water mark, at most 2000). Names, symbols, stakes and fees here are AINDEX's own first Funds.",
+  "funds": [
+    {
+      "name": "AINDEX Claude",
+      "symbol": "AX-CLAUDE",
+      "manager": "0x0000000000000000000000000000000000000000",
+      "dial": "open",
+      "stakeUsdg": 500000000,
+      "managementBps": 100,
+      "performanceBps": 1000,
+      "strategy": "Run by Claude Opus 5.5 through AINDEX credits: any token, liquidity, lending and borrowing on Robinhood Chain, every decision published with its reasoning."
+    },
+    {
+      "name": "AINDEX GPT",
+      "symbol": "AX-GPT",
+      "manager": "0x0000000000000000000000000000000000000000",
+      "dial": "open",
+      "stakeUsdg": 500000000,
+      "managementBps": 100,
+      "performanceBps": 1000,
+      "strategy": "Run by GPT-6.1 Sol through AINDEX credits: any token, liquidity, lending and borrowing on Robinhood Chain, every decision published with its reasoning."
+    },
+    {
+      "name": "AINDEX Qwen",
+      "symbol": "AX-QWEN",
+      "manager": "0x0000000000000000000000000000000000000000",
+      "dial": "balanced",
+      "stakeUsdg": 500000000,
+      "managementBps": 100,
+      "performanceBps": 1000,
+      "strategy": "Run by Qwen3.8 Max through AINDEX credits on the balanced preset: a diversified mix of Robinhood stock tokens and lending in reviewed Morpho markets, every decision published with its reasoning."
+    }
+  ]
+}

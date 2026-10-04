@@ -1,0 +1,995 @@
+{
+  "about": "Production configuration read by script/DeployFunds.s.sol and script/ApplyPending.s.sol. Every price entry is proposed at deploy and applied by ApplyPending after the 1-day delay. Addresses are lower case on purpose (forge parses them without checksum).",
+  "chainId": 4663,
+  "baseAsset": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+  "external": {
+    "morpho": "0x9d53d5e3bd5e8d4cbfa6db1ca238aea02e651010",
+    "permit2": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+    "v3PositionManager": "0x73991a25c818bf1f1128deaab1492d45638de0d3",
+    "v4PoolManager": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+    "weth": "0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+    "fablesRegistry": "0x159a113e012593d9b3cc63ad45e30f0467e13ef3",
+    "fablesPot": "0xc9ecc11728a4955b31f77c077b97fec521d78760"
+  },
+  "chainlink": [
+    {
+      "symbol": "USDG",
+      "token": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+      "feed": "0x61b7e5650328764b076a108eff5fa7282a1b9ad2",
+      "maxAge": 93600,
+      "checkPause": false,
+      "weekendClosed": false,
+      "haircutBps": 0,
+      "usSession": false,
+      "closedHaircutBps": 0,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "WETH",
+      "token": "0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+      "feed": "0x78f3556b67e17df817d51ef5a990cdaf09e8d3a9",
+      "maxAge": 93600,
+      "checkPause": false,
+      "weekendClosed": false,
+      "haircutBps": 50,
+      "usSession": false,
+      "closedHaircutBps": 0,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "cbBTC",
+      "token": "0xcec185eb182c47d1ba1efc84e6959e18cd620be4",
+      "feed": "0x0009cd492adf8167f9eebf1293556a673530a21a",
+      "maxAge": 93600,
+      "checkPause": false,
+      "weekendClosed": false,
+      "haircutBps": 50,
+      "usSession": false,
+      "closedHaircutBps": 0,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "USDe",
+      "token": "0x9b713609f4413d3349b267f0a3b244c3dda48dc7",
+      "feed": "0xb9fb4e65744e4178894f7c61cf80e8a48a5f224a",
+      "maxAge": 93600,
+      "checkPause": false,
+      "weekendClosed": false,
+      "haircutBps": 50,
+      "usSession": false,
+      "closedHaircutBps": 0,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "syrupUSDG",
+      "token": "0x40858070814a57fdf33a613ae84fe0a8b4a874f7",
+      "feed": "0xdd194c66adcb422f188a04434e4824d70c151cf0",
+      "maxAge": 93600,
+      "checkPause": false,
+      "weekendClosed": false,
+      "haircutBps": 50,
+      "usSession": false,
+      "closedHaircutBps": 0,
+      "quoteToken": "0x5fc5360d0400a0fd4f2af552add042d716f1d168"
+    },
+    {
+      "symbol": "AAPL",
+      "token": "0xaf3d76f1834a1d425780943c99ea8a608f8a93f9",
+      "feed": "0x6b22a786baa607d76728168703a39ea9c99f2cd0",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "AMD",
+      "token": "0x86923f96303d656e4aa86d9d42d1e57ad2023fdc",
+      "feed": "0x943a29e7ae51a4798823ca9eed2ed533b2a22c72",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "AMZN",
+      "token": "0x12f190a9f9d7d37a250758b26824b97ce941bf54",
+      "feed": "0xd5a1508ced74c084ebf3cbe853e2c968fb2a651c",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "ASML",
+      "token": "0x47f93d52cbec7c6d2cfc080e154002370a60daea",
+      "feed": "0xb4106147e8cce40b7d46124090d373a71b70f87d",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "BABA",
+      "token": "0xad25ac6c84d497db898fa1e8387bf6af3532a1c4",
+      "feed": "0x62cc8f9b5f56a33c9c8a60c8b92779f523c4e984",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "CLSK",
+      "token": "0xcbb95bbf36099d34da091dc6fa6f49efa257cee3",
+      "feed": "0x810c12d3a554bc47fd39597fe3b3aac4941f50ef",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "COIN",
+      "token": "0x6330d8c3178a418788df01a47479c0ce7ccf450b",
+      "feed": "0xa3a468a452940b7d6b69991207b508c609a98ef2",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "CRCL",
+      "token": "0xdf0992e440dd0be65bd8439b609d6d4366bf1cb5",
+      "feed": "0x6652edf64ba3731c4f2d3ce821a0fb1f1f6b482a",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "CRWV",
+      "token": "0x5f10a1c971b69e47e059e1dc91901b59b3fb49c3",
+      "feed": "0xe1b3aabcafad1c94708dc1367dcff8aa4407487c",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "DELL",
+      "token": "0x941ae714ec6d8130c7b75d67160ca08f1e7d11dd",
+      "feed": "0x1c6c8cadbe02e19129c39ddb92281ce4c0bf206b",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "EWY",
+      "token": "0x7f0abef0c07280f82c6a08ead09ded6bae2c13fc",
+      "feed": "0xefdf54610b62a7753ec30bdc380847c12d32e1d1",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 100,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "GME",
+      "token": "0x1b0e319c6a659f002271b69db8a7df2f911c153e",
+      "feed": "0x27c71df6a64fb476468edf256cf72c038bab5b67",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "GOOGL",
+      "token": "0x2e0847e8910a9732eb3fb1bb4b70a580adad4fe3",
+      "feed": "0xf6f373a037c30f0e5010d854385ca89185ae638b",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "INTC",
+      "token": "0xc72b96e0e48ecd4dc75e1e45396e26300bc39681",
+      "feed": "0x3f390c5c24628ac7c489515402235fead71d1913",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "IONQ",
+      "token": "0x558378e000d634a36593e338ebacdd6207640efe",
+      "feed": "0x22efec4919baf55f360e0edee4abeb26de4971eb",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "META",
+      "token": "0xc0d6457c16cc70d6790dd43521c899c87ce02f35",
+      "feed": "0x7c38c00c30bee9378381e7b6135d7283356d71b1",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "MSFT",
+      "token": "0xe93237c50d904957cf27e7b1133b510c669c2e74",
+      "feed": "0x45c3c877c15e6ba2ebb19ea114ea508d14c1af2e",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "MSTR",
+      "token": "0xec262a75e413fafd0df80480274532c79d42da09",
+      "feed": "0x396118bdfb181e6240e74d243f266b061c0edc3d",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "MU",
+      "token": "0xff080c8ce2e5feadaca0da81314ae59d232d4afd",
+      "feed": "0x425eefdcf05ed6526c3ce61af99429a228a6d596",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "NBIS",
+      "token": "0x9d9c6684f596f66a64c030b93a886d51fd4d7931",
+      "feed": "0xe1d87b116ba0fe898998f1d140339d1fa1e09705",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "NVDA",
+      "token": "0xd0601ce157db5bdc3162bbac2a2c8af5320d9eec",
+      "feed": "0x379ec4f7c378f34a1b47e4f3cbebcbac3e8e9f15",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "ORCL",
+      "token": "0xb0992820e760d836549ba69bc7598b4af75dee03",
+      "feed": "0x0e6a64a2b58a6693a531e6c555f3a5d042eea844",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "PLTR",
+      "token": "0x894e1ec2d74ffe5aef8dc8a9e84686accb964f2a",
+      "feed": "0x820abedff239034956b7a9d2f0a331f9f075eb4c",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "QQQ",
+      "token": "0xd5f3879160bc7c32ebb4dc785f8a4f505888de68",
+      "feed": "0x80901d846d5d7b030f26b480776ee3b29374c2ae",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 100,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "RGTI",
+      "token": "0x284358abc07f9359f19f4b5b4ac91901be2597ba",
+      "feed": "0x2a045cf1c49c61c166c036d2f06fa2d2d984f765",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "RKLB",
+      "token": "0x3b14c39e89d60d627b42a1a4ca45b5bb45fc12e2",
+      "feed": "0x045477bf65aef6f4f2386ad0164579e48381cc74",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "SGOV",
+      "token": "0x92fd66527192e3e61d4ddd13322aa222de86f9b5",
+      "feed": "0xa0df4ee0fff975306345875e3548fcc519577a11",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 100,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "SLV",
+      "token": "0x411efb0e7f985935daec3d4c3ebaea0d0ad7d89f",
+      "feed": "0x209b73908e92ae021826ed79609845451ecba2ce",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 100,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "SNDK",
+      "token": "0xb90a19ff0af67f7779aff50a882a9cff42446400",
+      "feed": "0xfb133fa4b7b385802b693a293606682df47109a3",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "SPCX",
+      "token": "0x4a0e65a3eccec6dbe60ae065f2e7bb85fae35eea",
+      "feed": "0xb265810950ba6c5c0ff821c9963014a56fd8bffb",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "SPY",
+      "token": "0x117cc2133c37b721f49de2a7a74833232b3b4c0c",
+      "feed": "0x319724394d3a0e3669269846abe664cd621f9f6a",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 100,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "TSLA",
+      "token": "0x322f0929c4625ed5bad873c95208d54e1c003b2d",
+      "feed": "0x4a1166a659a55625345e9515b32adecea5547c38",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "TSM",
+      "token": "0x58ffe4a942d3885baa22d7520691f611ef09e7aa",
+      "feed": "0x874cf94aa8ec88fd9560094dd065f2fb3e41fc2f",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "USAR",
+      "token": "0xd917b029c761d264c6a312bbbcda868658ef86a6",
+      "feed": "0xa994d3684e8400a6c8078226925779fdee682dd9",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 450,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "USO",
+      "token": "0xa30fa36db767ad9ed3f7a60fc79526fb4d56d344",
+      "feed": "0x75a9c76ef439e2c7c2e5a34ab105ecfe3766431c",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 100,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "symbol": "GLD",
+      "token": "0xc9a981fee1f9dec688bb123ccdecc63d0debfc4e",
+      "feed": "0x470a51258068043bd43dc0a56245625c9fe86eb0",
+      "maxAge": 93600,
+      "checkPause": true,
+      "weekendClosed": true,
+      "haircutBps": 50,
+      "usSession": true,
+      "closedHaircutBps": 100,
+      "quoteToken": "0x0000000000000000000000000000000000000000"
+    }
+  ],
+  "twap": [
+    {
+      "symbol": "PONS",
+      "token": "0x39dbed3a2bd333467115de45665cc57f813c4571",
+      "pool": "0xed50bdeea8adc232f159486192a4157281d722ff",
+      "window": 1800,
+      "quoteToken": "0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+      "checkPause": false,
+      "haircutBps": 300,
+      "usSession": false,
+      "closedHaircutBps": 0,
+      "thin": false
+    },
+    {
+      "symbol": "HIMS",
+      "token": "0xccee82fe024c36fa15e1005ede3e9e4787e23d09",
+      "pool": "0xc8c90d3a1c1a24967e773ac2ad0d456ba3e31f64",
+      "window": 1800,
+      "quoteToken": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+      "checkPause": true,
+      "haircutBps": 300,
+      "usSession": true,
+      "closedHaircutBps": 200,
+      "thin": false
+    },
+    {
+      "symbol": "COST",
+      "token": "0x4ea005168d7f09a7a0ba9d1def21a479950e44c2",
+      "pool": "0x0a2121a50a09ed0796ae81f9c53ff9398355a398",
+      "window": 1800,
+      "quoteToken": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+      "checkPause": true,
+      "haircutBps": 300,
+      "usSession": true,
+      "closedHaircutBps": 200,
+      "thin": false
+    },
+    {
+      "symbol": "DJT",
+      "token": "0x1d11f0496982706c5e14a514d4e79f2e6bde4516",
+      "pool": "0x31a89afd92f9397465649ad03226c52292fc1ae5",
+      "window": 1800,
+      "quoteToken": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+      "checkPause": true,
+      "haircutBps": 300,
+      "usSession": true,
+      "closedHaircutBps": 200,
+      "thin": false
+    },
+    {
+      "symbol": "RDDT",
+      "token": "0x05b37fb53a299a1b874a619e1c4c404d52c36f4c",
+      "pool": "0xa8744e76aed23b05f0126335e7bd38f7935d19fe",
+      "window": 1800,
+      "quoteToken": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+      "checkPause": true,
+      "haircutBps": 300,
+      "usSession": true,
+      "closedHaircutBps": 200,
+      "thin": false
+    },
+    {
+      "symbol": "LLY",
+      "token": "0x8005d266423c7ea827372c9c864491e5786600ea",
+      "pool": "0xf212d02146a897f5f686e9d629f6a73da534324a",
+      "window": 1800,
+      "quoteToken": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+      "checkPause": true,
+      "haircutBps": 300,
+      "usSession": true,
+      "closedHaircutBps": 200,
+      "thin": false
+    },
+    {
+      "symbol": "NET",
+      "token": "0x116f00968269b7bfbad4109ce591d6e74c0601d4",
+      "pool": "0xa9caebb1b2fb2b954f192572b309aef1caf6a330",
+      "window": 1800,
+      "quoteToken": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+      "checkPause": true,
+      "haircutBps": 300,
+      "usSession": true,
+      "closedHaircutBps": 200,
+      "thin": false
+    },
+    {
+      "symbol": "LMT",
+      "token": "0x329fcaceb9ad6f9580dd5f643fed0646900d043c",
+      "pool": "0x54f160bea60ec5207918c539d86e0b906b4da297",
+      "window": 1800,
+      "quoteToken": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+      "checkPause": true,
+      "haircutBps": 1000,
+      "usSession": true,
+      "closedHaircutBps": 0,
+      "thin": true
+    }
+  ],
+  "indexes": [
+    {
+      "symbol": "AIXSTR",
+      "token": "0xe7c9209d3c35d7cf1895e46a2d62b9a30841bb98",
+      "haircutBps": 150,
+      "usSession": true,
+      "closedHaircutBps": 350
+    }
+  ],
+  "weekend": [
+    {
+      "clampBps": 300,
+      "pools": [
+        {
+          "minLiquidity": 130000000000000000,
+          "pool": "0xaae0d815ee56e4092a5e5c2911e676fea50b2d6d"
+        }
+      ],
+      "spreadBps": 100,
+      "symbol": "AAPL",
+      "token": "0xaf3d76f1834a1d425780943c99ea8a608f8a93f9"
+    },
+    {
+      "clampBps": 300,
+      "pools": [
+        {
+          "minLiquidity": 420000000000000000,
+          "pool": "0x8ac92da74ab5f3b1d024dc1943ad7e15dc4179ef"
+        }
+      ],
+      "spreadBps": 100,
+      "symbol": "AMZN",
+      "token": "0x12f190a9f9d7d37a250758b26824b97ce941bf54"
+    },
+    {
+      "clampBps": 300,
+      "pools": [
+        {
+          "minLiquidity": 3200000000000000000000,
+          "pool": "0x6707aeac7d0e519b083219d27bb427364363183a"
+        }
+      ],
+      "spreadBps": 300,
+      "symbol": "COIN",
+      "token": "0x6330d8c3178a418788df01a47479c0ce7ccf450b"
+    },
+    {
+      "clampBps": 300,
+      "pools": [
+        {
+          "minLiquidity": 310000000000000000,
+          "pool": "0x654e4143e82a5824445ade0824351c2a9acd95a8"
+        }
+      ],
+      "spreadBps": 300,
+      "symbol": "CRCL",
+      "token": "0xdf0992e440dd0be65bd8439b609d6d4366bf1cb5"
+    },
+    {
+      "clampBps": 150,
+      "pools": [
+        {
+          "minLiquidity": 440000000000000000,
+          "pool": "0x7a6a053eccf1446a2633e05aa6d40d09381997ec"
+        },
+        {
+          "minLiquidity": 260000000000000000,
+          "pool": "0xba2f1ed4ceb2169d538d1e614d847e83c5a55913"
+        }
+      ],
+      "spreadBps": 50,
+      "symbol": "GLD",
+      "token": "0xc9a981fee1f9dec688bb123ccdecc63d0debfc4e"
+    },
+    {
+      "clampBps": 300,
+      "pools": [
+        {
+          "minLiquidity": 570000000000000000,
+          "pool": "0xe9713f453adb9245b19559790c96f470a18f2fdf"
+        }
+      ],
+      "spreadBps": 300,
+      "symbol": "GME",
+      "token": "0x1b0e319c6a659f002271b69db8a7df2f911c153e"
+    },
+    {
+      "clampBps": 300,
+      "pools": [
+        {
+          "minLiquidity": 250000000000000000,
+          "pool": "0x34d0dc122cf9a8eb296fc5e0d3a233625d7d19b7"
+        }
+      ],
+      "spreadBps": 100,
+      "symbol": "GOOGL",
+      "token": "0x2e0847e8910a9732eb3fb1bb4b70a580adad4fe3"
+    },
+    {
+      "clampBps": 300,
+      "pools": [
+        {
+          "minLiquidity": 1800000000000000000000,
+          "pool": "0xa4bdb396a69617eb7f70e2cc1ef526f7340b1b0d"
+        },
+        {
+          "minLiquidity": 52000000000000000,
+          "pool": "0x107a7cb40d8665360ba10e59471af06150a50922"
+        }
+      ],
+      "spreadBps": 100,
+      "symbol": "META",
+      "token": "0xc0d6457c16cc70d6790dd43521c899c87ce02f35"
+    },
+    {
+      "clampBps": 300,
+      "pools": [
+        {
+          "minLiquidity": 96000000000000000,
+          "pool": "0xeb60bcd1d920ad6e102690ccfc6fb488899e1510"
+        }
+      ],
+      "spreadBps": 100,
+      "symbol": "MSFT",
+      "token": "0xe93237c50d904957cf27e7b1133b510c669c2e74"
+    },
+    {
+      "clampBps": 300,
+      "pools": [
+        {
+          "minLiquidity": 3000000000000000000000,
+          "pool": "0x70504a6fafdbfb75fe971faa4dd716e79ac5624c"
+        }
+      ],
+      "spreadBps": 300,
+      "symbol": "MSTR",
+      "token": "0xec262a75e413fafd0df80480274532c79d42da09"
+    },
+    {
+      "clampBps": 300,
+      "pools": [
+        {
+          "minLiquidity": 92000000000000000,
+          "pool": "0xd057b1bc54917855bbee58ead58647f47cab35e5"
+        }
+      ],
+      "spreadBps": 100,
+      "symbol": "MU",
+      "token": "0xff080c8ce2e5feadaca0da81314ae59d232d4afd"
+    },
+    {
+      "clampBps": 300,
+      "pools": [
+        {
+          "minLiquidity": 900000000000000000,
+          "pool": "0xd4eb21209c4d6093f80b5b84f5c45cc093ea14a3"
+        },
+        {
+          "minLiquidity": 3500000000000000000000,
+          "pool": "0x62ab521f71431f78ac374cdbadc6cda3c8916b6c"
+        }
+      ],
+      "spreadBps": 100,
+      "symbol": "NVDA",
+      "token": "0xd0601ce157db5bdc3162bbac2a2c8af5320d9eec"
+    },
+    {
+      "clampBps": 150,
+      "pools": [
+        {
+          "minLiquidity": 280000000000000000,
+          "pool": "0xd60a5d14db690b7afad71f76b108071d7175597d"
+        },
+        {
+          "minLiquidity": 1200000000000000000000,
+          "pool": "0xa40d00a55d43ba2d188039dcf88bd68f4f133e78"
+        }
+      ],
+      "spreadBps": 50,
+      "symbol": "QQQ",
+      "token": "0xd5f3879160bc7c32ebb4dc785f8a4f505888de68"
+    },
+    {
+      "clampBps": 150,
+      "pools": [
+        {
+          "minLiquidity": 12000000000000000000,
+          "pool": "0xfab520051f96f4d2a32c22b6a3dd7fffdf231bfe"
+        },
+        {
+          "minLiquidity": 2300000000000000000,
+          "pool": "0x6ba50150b17ffd0972915aaf04ffd5e8f4fa49b4"
+        }
+      ],
+      "spreadBps": 50,
+      "symbol": "SGOV",
+      "token": "0x92fd66527192e3e61d4ddd13322aa222de86f9b5"
+    },
+    {
+      "clampBps": 150,
+      "pools": [
+        {
+          "minLiquidity": 120000000000000000,
+          "pool": "0x8cb787e6c315d464775289bad00fdd67d53ecb3d"
+        }
+      ],
+      "spreadBps": 50,
+      "symbol": "SLV",
+      "token": "0x411efb0e7f985935daec3d4c3ebaea0d0ad7d89f"
+    },
+    {
+      "clampBps": 300,
+      "pools": [
+        {
+          "minLiquidity": 400000000000000000,
+          "pool": "0xc61284332117c3fb23a2a56cceffd07f7af60029"
+        },
+        {
+          "minLiquidity": 100000000000000000,
+          "pool": "0xeb07d9587efd1778dfb9c385ec43ef6d5f9fe401"
+        }
+      ],
+      "spreadBps": 300,
+      "symbol": "SPCX",
+      "token": "0x4a0e65a3eccec6dbe60ae065f2e7bb85fae35eea"
+    },
+    {
+      "clampBps": 150,
+      "pools": [
+        {
+          "minLiquidity": 3600000000000000000000,
+          "pool": "0xddcbba3666f578e3f09516f21ff85bfee859ab5e"
+        },
+        {
+          "minLiquidity": 120000000000000000,
+          "pool": "0xa7bb1ac63bbab0c44316e6c8c455213441689167"
+        }
+      ],
+      "spreadBps": 50,
+      "symbol": "SPY",
+      "token": "0x117cc2133c37b721f49de2a7a74833232b3b4c0c"
+    },
+    {
+      "clampBps": 300,
+      "pools": [
+        {
+          "minLiquidity": 74000000000000000,
+          "pool": "0xf4acdaeeb7022862a763c9b1b885e11191c889e3"
+        }
+      ],
+      "spreadBps": 300,
+      "symbol": "TSLA",
+      "token": "0x322f0929c4625ed5bad873c95208d54e1c003b2d"
+    },
+    {
+      "clampBps": 150,
+      "pools": [
+        {
+          "minLiquidity": 770000000000000000,
+          "pool": "0x02175608f1b5e6b5ed221ccfdc7be197d111d915"
+        }
+      ],
+      "spreadBps": 50,
+      "symbol": "USO",
+      "token": "0xa30fa36db767ad9ed3f7a60fc79526fb4d56d344"
+    }
+  ],
+  "teller": {
+    "weekendInflowBps": 500,
+    "weekendOutflowBps": 500,
+    "poolFlowBps": 500,
+    "poolFlowFloorUsd": 250
+  },
+  "morphoMarkets": [
+    {
+      "symbol": "NVDA/USDG 62.5% (busiest)",
+      "oracle": "0xed29d310cfa91778a5850538da28ed42234cb78c",
+      "market": "0x8b16891f032a93b771347c9cb470a780e6699dd701553d3402aa3cdba6189c3e"
+    },
+    {
+      "symbol": "SPCX/USDG 62.5%",
+      "oracle": "0x872f9d8955b34e841227a92de755cd63042ab7a5",
+      "market": "0x9b4b47cdf7e295341c6c6cdfd3efb9805c4a5b3d580dba0c0c39d3a4232b297b"
+    },
+    {
+      "symbol": "AAPL/USDG 62.5%",
+      "oracle": "0xd625d488d552775d2867194c618b945e5ddfe097",
+      "market": "0xdeb4782d012d5fd3b24962538c2f6559049d70bda4dabd2e4212dacb96c28d45"
+    },
+    {
+      "symbol": "GOOGL/USDG 62.5%",
+      "oracle": "0x12ec3474d1e321e0aab065278b97fbc7eda5f424",
+      "market": "0x7fa81b10e5d21b2e4c571f862442bc11aff2ed14f02335868d0ff933fd40d0ba"
+    },
+    {
+      "symbol": "SPY/USDG 62.5%",
+      "oracle": "0xe8dab19184f72b5a5a9d51a6c50a1b04b0669ce7",
+      "market": "0x50bc39b5722fb5634c436d74c6787f3c125b879e7b73cf9e9ecc01bbb57b8e55"
+    },
+    {
+      "symbol": "NVDA/USDG 62.5% (liquid)",
+      "oracle": "0xc5b8a6c5fdf14f9744db1c8595f49e42ce23031a",
+      "market": "0x66306c087add8907752320b309934abcc354d21626de8115c79df49d9c214edc"
+    },
+    {
+      "symbol": "TSLA/USDG 62.5%",
+      "oracle": "0xca76875634e0b9759aa6610dc3092e92fcefe46e",
+      "market": "0xb41b34c5989420ad080e79363a9cfe3e23bec7459fcd2d88029250da370288df"
+    },
+    {
+      "symbol": "syrupUSDG/USDG 91.5%",
+      "oracle": "0x152c638fad68913739ee19ba8ef47faeb09dca91",
+      "market": "0x919a9b6b94dae7c86620eaf7a08e597aae8a4c3a9e9c7671771fbaf62b6b61c7"
+    }
+  ],
+  "holidays": [
+    20783,
+    20812,
+    20819,
+    20836,
+    20864,
+    20903,
+    20969,
+    20987,
+    21004,
+    21067,
+    21147,
+    21176
+  ],
+  "holidayDates": [
+    "2026-11-26",
+    "2026-12-25",
+    "2027-01-01",
+    "2027-01-18",
+    "2027-02-15",
+    "2027-03-26",
+    "2027-05-31",
+    "2027-06-18",
+    "2027-07-05",
+    "2027-09-06",
+    "2027-11-25",
+    "2027-12-24"
+  ],
+  "notes": {
+    "chainlink": "Class Feed. maxAge 26h (24h heartbeat plus slack). Robinhood stock and ETF tokens: checkPause, weekendClosed, usSession. Closed-market fallback spread (when no weekend pool qualifies): closedHaircutBps on top of the 50 bps haircut, 450 for single stocks (5% in all) and 100 for ETFs (1.5%). USDG is the base asset (no haircut); other feed tokens 50 bps (the feeds' own 0.5% deviation band). syrupUSDG uses the syrupUSDG/USDG exchange-rate feed times USDG.",
+    "twap": "30-minute v3 TWAP through the pool's other token (Chainlink USDG or WETH), the deepest v3 pool per token (re-measured 2026-10-02 by aindex/deploy/check-twap-pools.ts: LLY moved to the USDG 0.05% pool 0xf212, PONS to the WETH 0.3% pool 0xed50, which the router converts through its own WETH price (TWAP sources report a price in the pool's other token and the router chains it, at most three steps, never in a loop; the class is the worse of the token's and its quote's); PONS is not a stock token). Class Pool with a 300 bps haircut, except entries with thin=true: class Thin, 1000 bps (LMT: its deepest pool held about $700 of 1% depth). Stock tokens priced this way trade in their pool at weekends too, so their closed-market spread is only closedHaircutBps 200 on top of the haircut (5% in all); LMT keeps its 10% haircut and adds nothing.",
+    "indexes": "Priced by IndexNavSource (look-through at backing, every basket token at the router's fair price), class Pool, 150 bps haircut (above the basket's value-weighted haircut, about 110 bps with LMT at 1000), with the look-through so class caps see LMT as Thin. Checked 2026-10-01: with LMT priced, the router's AIXSTR value matches AINDEX's own valuation; the rehearsal's earlier gap was execution cost on a thin pool, not valuation. Closed-market spread: closedHaircutBps 350 on top of the 150 bps haircut (5% in all, the single-stock fallback).",
+    "morphoMarkets": "The eight Morpho markets reviewed on 2026-10-01, approved by market id (the hash of loan token, collateral token, oracle, rate model and LLTV), so an approval never extends to another market built on the same oracle. Each oracle is immutable (no SSTORE, no proxy, no delegatecall), reads only official Chainlink feeds and prices that market's own collateral in USDG. Type A (MorphoChainlinkOracleV2 style): NVDA 0xC5b8, TSLA 0xCa76, SPY 0xe8dA, syrupUSDG 0x152c. Type B (Robinhood stock oracle with pause and multiplier checks): NVDA 0xED29, AAPL 0xD625, SPCX 0x872F, GOOGL 0x12Ec. Market params confirmed on chain.",
+    "holidays": "UTC day numbers (timestamp / 86400) of NYSE holidays from holidayDates; added at deploy, each counts a day later.",
+    "weekend": "Worse-of pricing while the US market is closed (SessionPoolSource, PriceRouter Session.closedSource): per stock token the deepest Uniswap v3 pools by 1% depth converted to USD, whatever the pair (up to two, each with at least $20k of 1% depth on its thinner side, measured 2026-10-02; thinner tokens have no pool and use the fallback spread). Each pool's 30-minute TWAP is converted through the router's own price of its other token (on the side it prices), held within clampBps of the feed's last price (300 single stocks, 150 ETFs), and counts only while the pool's in-range liquidity over the window (the harmonic mean, which a trade in the same block cannot move) is at least minLiquidity (a quarter of what it held on 2026-10-02) and its history covers the window even after this block's write. Entrants pay the highest of the converted pools and the last price times (1 + spreadBps), leavers get the lowest times (1 - spreadBps): 50 bps ETFs, 100 megacaps, 300 volatile names (COIN, CRCL, GME, MSTR, SPCX, TSLA). WETH-quoted pools converted at the live ETH feed tracked the USDG pools within 0.6% over two weekends of samples and within 0.4% live (2026-10-02), the ETH feed's own 0.5% deviation band; taking the worst of every qualifying pool means bending any one of them only hurts the one who bends it. Measured over 14 weekends of feeds and two of pools, s = 0.5% left the worst holder edge at 0.02%.",
+    "teller": "weekendInflowBps: the most deposit USDG a Fund takes per market closure (matched with leavers or not), in basis points of its fair NAV at the closure's first settlement (5%); deposits beyond it wait for the next cut-off. weekendOutflowBps: the most cash it pays leavers per closure (5%); cash exits beyond it come back as shares, to leave in kind. poolFlowBps: while a Fund holds tokens priced from pools (classes Pool and Thin), the most deposit USDG it takes and the most cash it pays per 24-hour window (UTC days, whatever its cut-offs), each in basis points of fair NAV divided by the share of NAV in such tokens (5%: 5% of NAV for a Fund wholly in them); beyond it deposits wait (the first one larger than the room left goes in in part) and cash exits come back as shares. poolFlowFloorUsd: the least that cap is per day, whole USD (250; at most 1,000), so a small Fund still takes a normal deposit. The teller has no swap routers since deposits enter as cash (2026-10-02)."
+  },
+  "fund": {
+    "about": "Defaults script/CreateFund.s.sol gives a new Fund's adapters: the swap adapter's routers, the ERC-4626 vaults, AINDEX's IndexZap, the Fables guard (0 = off). Fables hooks are read from Fables' own registry at creation (every active ERC-20 pool's hook).",
+    "managerDays": 90,
+    "swapTargets": [
+      {
+        "approval": 0,
+        "name": "KyberSwap MetaAggregationRouterV2",
+        "target": "0x6131b5fae19ea4f9d964eac0408e4408b66337b5"
+      },
+      {
+        "approval": 0,
+        "name": "0x AllowanceHolder",
+        "target": "0x0000000000001ff3684f28c67538d4d072c22734"
+      },
+      {
+        "approval": 0,
+        "name": "ParaSwap Augustus 6.2",
+        "target": "0x6a000f20005980200259b80c5102003040001068"
+      },
+      {
+        "approval": 0,
+        "name": "LiFi diamond",
+        "target": "0xb477751b76cf82d00a686a1232f5fcd772414af3"
+      },
+      {
+        "approval": 1,
+        "name": "Uniswap Universal Router (Permit2)",
+        "target": "0x8876789976decbfcbbbe364623c63652db8c0904"
+      }
+    ],
+    "erc4626Vaults": [
+      "0xbeeff033f34c046626b8d0a041844c5d1a5409dd",
+      "0xde770c84fe66e063336b31737cfe9790f18c4087"
+    ],
+    "indexZap": "0x5f807bb130739f8d9a96d7d4383a1318e0669bff",
+    "fablesMaxSpotDeviationBps": 0
+  }
+}
