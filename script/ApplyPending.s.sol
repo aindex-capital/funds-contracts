@@ -62,6 +62,9 @@ contract ApplyPending is Script {
         FundsConfig.ChainlinkEntry[] memory c = FundsConfig.chainlink(json);
         FundsConfig.TwapEntry[] memory t = FundsConfig.twap(json);
         FundsConfig.IndexEntry[] memory x = FundsConfig.indexes(json);
+        FundsConfig.VaultShareEntry[] memory v = FundsConfig.vaultShares(json);
+        address[] memory shares = new address[](v.length);
+        for (uint256 i; i < v.length; ++i) shares[i] = v[i].token;
         address[] memory feeds = new address[](c.length);
         address[] memory pools = new address[](t.length);
         address[] memory indexes = new address[](x.length);
@@ -92,6 +95,22 @@ contract ApplyPending is Script {
                 _queue(address(router), abi.encodeCall(router.applyLookThrough, (indexes[i])));
             }
         }
+        // Tokens priced by the v4 recorder: the recorder's configuration, then the router's.
+        FundsConfig.RecordedEntry[] memory rec = FundsConfig.recorded(json);
+        address recorderAddr = vm.parseJsonAddress(dep, ".priceRecorder");
+        address[] memory recorded = new address[](rec.length);
+        for (uint256 i; i < rec.length; ++i) {
+            recorded[i] = rec[i].token;
+            (bool okAt, bytes memory atRaw) = recorderAddr.staticcall(abi.encodeWithSignature("pendingAt(address)", rec[i].token));
+            uint64 at = okAt ? uint64(abi.decode(atRaw, (uint256))) : 0;
+            if (at != 0) {
+                _due(at, rec[i].token);
+                _queue(recorderAddr, abi.encodeWithSignature("applyPending(address)", rec[i].token));
+            }
+            _router(rec[i].token);
+        }
+        // Vault shares (Arcus pTokens): their source is stateless, so only the router entry waits.
+        for (uint256 i; i < shares.length; ++i) _router(shares[i]);
         vm.startBroadcast();
         for (uint256 i; i < calls.length; i += BATCH) {
             uint256 n = calls.length - i < BATCH ? calls.length - i : BATCH;
@@ -105,6 +124,8 @@ contract ApplyPending is Script {
         _report(feeds);
         _report(pools);
         _report(indexes);
+        _report(shares);
+        _report(recorded);
     }
 
     function _source(address s, uint64 at, address token) internal {

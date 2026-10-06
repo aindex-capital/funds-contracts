@@ -235,7 +235,8 @@ contract MockFablesLedger {
         uint256 deadline
     ) external payable {
         if (paused()) revert LedgerPaused();
-        require(msg.value == 0 && block.timestamp <= deadline && liq != 0, "bad deposit");
+        require(block.timestamp <= deadline && liq != 0, "bad deposit");
+        require(Currency.unwrap(key.currency0) == address(0) || msg.value == 0, "value on an ERC20 pool");
         require(address(key.hooks) == address(this), "PoolNotConfigured");
         uint256 id = rangeId(key.toId(), tl, tu);
         if (!_keys[id].set) {
@@ -255,7 +256,16 @@ contract MockFablesLedger {
     function _payIn(PoolKey calldata key, int24 tl, int24 tu, uint128 liq, uint128 max0, uint128 max1) internal {
         (uint256 a0, uint256 a1) = _amounts(key, tl, tu, liq, true);
         if (a0 > max0 || a1 > max1) revert PrincipalAboveMax();
-        if (a0 != 0) IERC20(Currency.unwrap(key.currency0)).transferFrom(msg.sender, address(this), a0);
+        if (Currency.unwrap(key.currency0) == address(0)) {
+            // Like the live ETH hooks: the budget comes as msg.value and the rest is refunded with a bare call.
+            require(msg.value >= a0, "short of ETH");
+            if (msg.value > a0) {
+                (bool ok,) = msg.sender.call{value: msg.value - a0}("");
+                require(ok, "refund failed");
+            }
+        } else if (a0 != 0) {
+            IERC20(Currency.unwrap(key.currency0)).transferFrom(msg.sender, address(this), a0);
+        }
         if (a1 != 0) IERC20(Currency.unwrap(key.currency1)).transferFrom(msg.sender, address(this), a1);
     }
 
@@ -312,7 +322,7 @@ contract MockFablesLedger {
     }
 
     /// @notice Test helper: swappers paid `fee0`/`fee1` to the in-range liquidity of this pool.
-    function accrue(PoolKey calldata key, uint256 fee0, uint256 fee1) external {
+    function accrue(PoolKey calldata key, uint256 fee0, uint256 fee1) external payable {
         PoolId pid = key.toId();
         (, int24 tick) = pm.spot(pid);
         uint256[] memory ids = _poolRanges[PoolId.unwrap(pid)];
@@ -326,7 +336,8 @@ contract MockFablesLedger {
         }
         require(active != 0, "no active liquidity");
         pm.addGrowth(pid, FullMath.mulDiv(fee0, 1 << 128, active), FullMath.mulDiv(fee1, 1 << 128, active));
-        MockERC20(Currency.unwrap(key.currency0)).mint(address(this), fee0);
+        if (Currency.unwrap(key.currency0) == address(0)) require(msg.value == fee0, "send the ETH fees");
+        else MockERC20(Currency.unwrap(key.currency0)).mint(address(this), fee0);
         MockERC20(Currency.unwrap(key.currency1)).mint(address(this), fee1);
     }
 
@@ -391,7 +402,27 @@ contract MockFablesLedger {
     function _pay(address token, address to, uint256 amount) internal {
         if (amount == 0) return;
         if (to == blocked) revert Blocked();
-        IERC20(token).transfer(to, amount);
+        if (token == address(0)) {
+            (bool ok,) = to.call{value: amount}("");
+            require(ok, "ETH payout failed");
+        } else {
+            IERC20(token).transfer(to, amount);
+        }
+    }
+}
+
+/// @notice WETH9 for unit tests: wraps and unwraps against real test ether.
+contract MockWETH9 is MockERC20 {
+    constructor() MockERC20("Wrapped Ether", "WETH", 18) {}
+
+    function deposit() external payable {
+        _mint(msg.sender, msg.value);
+    }
+
+    function withdraw(uint256 amount) external {
+        _burn(msg.sender, amount);
+        (bool ok,) = msg.sender.call{value: amount}("");
+        require(ok, "ETH transfer failed");
     }
 }
 

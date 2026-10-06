@@ -601,6 +601,18 @@
       "usSession": true,
       "closedHaircutBps": 0,
       "thin": true
+    },
+    {
+      "symbol": "PFE",
+      "token": "0x7066a64c24e4206cd62e83bf198c1e7eb361f51e",
+      "pool": "0xc7d573fcda6d2107c97fb582ae18411f9db32e7f",
+      "window": 1800,
+      "quoteToken": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+      "checkPause": true,
+      "haircutBps": 500,
+      "usSession": false,
+      "closedHaircutBps": 0,
+      "thin": true
     }
   ],
   "indexes": [
@@ -953,7 +965,9 @@
     "morphoMarkets": "The eight Morpho markets reviewed on 2026-10-01, approved by market id (the hash of loan token, collateral token, oracle, rate model and LLTV), so an approval never extends to another market built on the same oracle. Each oracle is immutable (no SSTORE, no proxy, no delegatecall), reads only official Chainlink feeds and prices that market's own collateral in USDG. Type A (MorphoChainlinkOracleV2 style): NVDA 0xC5b8, TSLA 0xCa76, SPY 0xe8dA, syrupUSDG 0x152c. Type B (Robinhood stock oracle with pause and multiplier checks): NVDA 0xED29, AAPL 0xD625, SPCX 0x872F, GOOGL 0x12Ec. Market params confirmed on chain.",
     "holidays": "UTC day numbers (timestamp / 86400) of NYSE holidays from holidayDates; added at deploy, each counts a day later.",
     "weekend": "Worse-of pricing while the US market is closed (SessionPoolSource, PriceRouter Session.closedSource): per stock token the deepest Uniswap v3 pools by 1% depth converted to USD, whatever the pair (up to two, each with at least $20k of 1% depth on its thinner side, measured 2026-10-02; thinner tokens have no pool and use the fallback spread). Each pool's 30-minute TWAP is converted through the router's own price of its other token (on the side it prices), held within clampBps of the feed's last price (300 single stocks, 150 ETFs), and counts only while the pool's in-range liquidity over the window (the harmonic mean, which a trade in the same block cannot move) is at least minLiquidity (a quarter of what it held on 2026-10-02) and its history covers the window even after this block's write. Entrants pay the highest of the converted pools and the last price times (1 + spreadBps), leavers get the lowest times (1 - spreadBps): 50 bps ETFs, 100 megacaps, 300 volatile names (COIN, CRCL, GME, MSTR, SPCX, TSLA). WETH-quoted pools converted at the live ETH feed tracked the USDG pools within 0.6% over two weekends of samples and within 0.4% live (2026-10-02), the ETH feed's own 0.5% deviation band; taking the worst of every qualifying pool means bending any one of them only hurts the one who bends it. Measured over 14 weekends of feeds and two of pools, s = 0.5% left the worst holder edge at 0.02%.",
-    "teller": "weekendInflowBps: the most deposit USDG a Fund takes per market closure (matched with leavers or not), in basis points of its fair NAV at the closure's first settlement (5%); deposits beyond it wait for the next cut-off. weekendOutflowBps: the most cash it pays leavers per closure (5%); cash exits beyond it come back as shares, to leave in kind. poolFlowBps: while a Fund holds tokens priced from pools (classes Pool and Thin), the most deposit USDG it takes and the most cash it pays per 24-hour window (UTC days, whatever its cut-offs), each in basis points of fair NAV divided by the share of NAV in such tokens (5%: 5% of NAV for a Fund wholly in them); beyond it deposits wait (the first one larger than the room left goes in in part) and cash exits come back as shares. poolFlowFloorUsd: the least that cap is per day, whole USD (250; at most 1,000), so a small Fund still takes a normal deposit. The teller has no swap routers since deposits enter as cash (2026-10-02)."
+    "teller": "weekendInflowBps: the most deposit USDG a Fund takes per market closure (matched with leavers or not), in basis points of its fair NAV at the closure's first settlement (5%); deposits beyond it wait for the next cut-off. weekendOutflowBps: the most cash it pays leavers per closure (5%); cash exits beyond it come back as shares, to leave in kind. poolFlowBps: while a Fund holds tokens priced from pools (classes Pool and Thin), the most deposit USDG it takes and the most cash it pays per 24-hour window (UTC days, whatever its cut-offs), each in basis points of fair NAV divided by the share of NAV in such tokens (5%: 5% of NAV for a Fund wholly in them); beyond it deposits wait (the first one larger than the room left goes in in part) and cash exits come back as shares. poolFlowFloorUsd: the least that cap is per day, whole USD (250; at most 1,000), so a small Fund still takes a normal deposit. The teller has no swap routers since deposits enter as cash (2026-10-02).",
+    "vaultShares": "Class Thin through VaultShareSource: the share's own convertToAssets (Arcus' keeper posts each pToken's NAV) times the router's USDG price. Arcus pTokens: leveraged long (p) and short (s) perps exposure, minting allowlisted, bought and sold in their Uniswap v4 pools (0.425% or 0.85% fee). Haircut 150 bps covers the pool fee and slippage. Listed 2026-10-05 (research/integrations-2026-10-05.md). No US session: Arcus perps trade 24/7.",
+    "recorded": "Class Thin through the v4 PriceRecorder (24-hour median of 10-minute readings, which the settle keeper records; at least 100 readings, about 17 hours, before a price). Hookless USDG pools found from their PoolManager Initialize events. Added 2026-10-06 so Pendle carry on SHROOM and ORBIO counts at value (SHROOM/USDG $310k, ORBIO/USDG $1.18M). PFE joins `twap` the same day: its Uniswap v3 PFE/USDG pool ($73k, 1801 observations), thin, 500 bps."
   },
   "fund": {
     "about": "Defaults script/CreateFund.s.sol gives a new Fund's adapters: the swap adapter's routers, the ERC-4626 vaults, AINDEX's IndexZap, the Fables guard (0 = off). Fables hooks are read from Fables' own registry at creation (every active ERC-20 pool's hook).",
@@ -991,5 +1005,95 @@
     ],
     "indexZap": "0x5f807bb130739f8d9a96d7d4383a1318e0669bff",
     "fablesMaxSpotDeviationBps": 0
-  }
+  },
+  "vaultShares": [
+    {
+      "haircutBps": 150,
+      "symbol": "pHOOD3x",
+      "token": "0xe24cabdf76dd1c2576049167eb1755c84b985c36"
+    },
+    {
+      "haircutBps": 150,
+      "symbol": "pBTC3x",
+      "token": "0x4472c69d299382f8847ebce4fc6ed8e295510e3e"
+    },
+    {
+      "haircutBps": 150,
+      "symbol": "sHOOD3x",
+      "token": "0x0053333fcaff9486fa55877044f09137c1a52530"
+    },
+    {
+      "haircutBps": 150,
+      "symbol": "pSPCX3x",
+      "token": "0x8b9d2eb675e33e541cb7de25a55724d2e70e8dab"
+    },
+    {
+      "haircutBps": 150,
+      "symbol": "pGME5x",
+      "token": "0x5c3b9a9b021e86b54202abcb4580f1f5c271875b"
+    },
+    {
+      "haircutBps": 150,
+      "symbol": "pGLD5x",
+      "token": "0x37a2afaa98648f2e13658623885f821ac8365609"
+    },
+    {
+      "haircutBps": 150,
+      "symbol": "pBTC",
+      "token": "0x925f92f055edb79c42b5d45e64a1b74143b90ea0"
+    },
+    {
+      "haircutBps": 150,
+      "symbol": "sGME5x",
+      "token": "0x1a596466cb593bee293be8366d9ce493582189c2"
+    },
+    {
+      "haircutBps": 150,
+      "symbol": "sGLD5x",
+      "token": "0xb2cb7371bc45a460f856712a3088c23acd385df8"
+    },
+    {
+      "haircutBps": 150,
+      "symbol": "sSPCX3x",
+      "token": "0x17271bd2a1eaa350a002d25236bcc4dc07ceb6a9"
+    },
+    {
+      "haircutBps": 150,
+      "symbol": "sBTC3x",
+      "token": "0xadcceee8e422050f890522fa798f8a93a4857083"
+    },
+    {
+      "haircutBps": 150,
+      "symbol": "sBTC",
+      "token": "0xc25c966168a8e933b0aba0dc8a25cac4a2b2b91d"
+    }
+  ],
+  "recorded": [
+    {
+      "haircutBps": 750,
+      "key": {
+        "currency0": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+        "currency1": "0xab093def657f15df31b33922a95e047add645b29",
+        "fee": 9000,
+        "hooks": "0x0000000000000000000000000000000000000000",
+        "tickSpacing": 90
+      },
+      "quoteToken": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+      "symbol": "SHROOM",
+      "token": "0xab093def657f15df31b33922a95e047add645b29"
+    },
+    {
+      "haircutBps": 500,
+      "key": {
+        "currency0": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+        "currency1": "0xaa07a0e9209e16ac99708c3ec70159c6ef3128a3",
+        "fee": 8000,
+        "hooks": "0x0000000000000000000000000000000000000000",
+        "tickSpacing": 80
+      },
+      "quoteToken": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+      "symbol": "ORBIO",
+      "token": "0xaa07a0e9209e16ac99708c3ec70159c6ef3128a3"
+    }
+  ]
 }

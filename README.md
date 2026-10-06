@@ -33,6 +33,12 @@ ERC-4626 `0x3D2133eaA904269FCA5B72B3fD36C77ac69bEB7D`, Morpho `0x03E40959Fb64694
 Uniswap v3 `0x57B135ae6Dd823140b8884bb35B5F16439DaF6EC`, Uniswap v4 `0xA9D824a30FA63d39b7e9896A63ef9B899Ea6073D`,
 Fables `0xB568A71263B9A8a58A564A124034131846aa17F6`, AINDEX index `0x1cE0a160ED76835737d120D67E90ac66902cE2d0`.
 
+Added on 2026-10-06, each with its record in `deployments/`: Pendle `0x4F6e499F8a656E8dD492785243A872b1626eE16C`,
+managed liquidity for Beefy CLM and Arrowfarm vaults `0xF4350fF8536D601C32FC9b5BB0e6C3A173012223`, Arcus pToken redeem
+`0x011Ab7107cF756Bf984E787ccA4d508233a4c5bb`, Fables v2 (pools paired with native ETH too)
+`0x41233d98542f37e9D3a3c6b832D3BB1229b67129`, and the `VaultShareSource` price source
+`0x67376c4617bc322d4b482D0B20094E217Ed4DC2e` for vault shares held directly (Arcus pTokens).
+
 
 ## Build and test
 
@@ -45,8 +51,9 @@ forge test                      # unit and invariant tests (fork tests skip with
 ROBINHOOD_RPC=https://rpc.ordofi.network forge test --match-path 'test/fork/*'
 ```
 
-The public RPC (`rpc.mainnet.chain.robinhood.com`) returns Cloudflare 403 to Foundry; use
-`https://rpc.ordofi.network` or a private endpoint.
+The public RPC (`rpc.mainnet.chain.robinhood.com`) keeps only recent state and returns Cloudflare 403 to bursts of
+reads, so forge tests and simulations that read much state need `https://rpc.ordofi.network` or a private endpoint.
+Ordofi has served stale nonces, so the deploy scripts send their transactions through the public RPC.
 
 ## Deployment
 

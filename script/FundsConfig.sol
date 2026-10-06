@@ -71,6 +71,43 @@ library FundsConfig {
         address pool;
     }
 
+    /// @notice A token priced by the v4 PriceRecorder from one Uniswap v4 pool (`key`), in `quoteToken`. Class Thin.
+    struct RecordedEntry {
+        uint256 haircutBps;
+        PoolKeyEntry key;
+        address quoteToken;
+        string symbol;
+        address token;
+    }
+
+    /// @notice A v4 pool key, fields in alphabetical order for the JSON decoder.
+    struct PoolKeyEntry {
+        address currency0;
+        address currency1;
+        uint256 fee;
+        address hooks;
+        int256 tickSpacing;
+    }
+
+    /// @dev Empty when the file has no `recorded`.
+    function recorded(string memory json) internal view returns (RecordedEntry[] memory) {
+        if (!vm.keyExistsJson(json, ".recorded")) return new RecordedEntry[](0);
+        return abi.decode(vm.parseJson(json, ".recorded"), (RecordedEntry[]));
+    }
+
+    /// @notice A vault share priced by `VaultShareSource` (its own `convertToAssets`): Arcus pTokens. Class Thin.
+    struct VaultShareEntry {
+        uint256 haircutBps;
+        string symbol;
+        address token;
+    }
+
+    /// @dev Empty when the file has no `vaultShares` (it was added after the first deploy).
+    function vaultShares(string memory json) internal view returns (VaultShareEntry[] memory) {
+        if (!vm.keyExistsJson(json, ".vaultShares")) return new VaultShareEntry[](0);
+        return abi.decode(vm.parseJson(json, ".vaultShares"), (VaultShareEntry[]));
+    }
+
     function weekend(string memory json) internal pure returns (WeekendEntry[] memory) {
         return abi.decode(vm.parseJson(json, ".weekend"), (WeekendEntry[]));
     }
